@@ -86,6 +86,7 @@ class UploadController extends \BaseController {
         }
 
         /* Validate against Item model's validation rules */
+        /* Catherine here... */
         foreach($rows as $row) {
             $message += validateModel($row);
         }
@@ -108,8 +109,6 @@ class UploadController extends \BaseController {
         if ($message) {
             return $message;
         }
-
-
 
     }
 
@@ -149,11 +148,20 @@ class UploadController extends \BaseController {
 
     }
 
+    // Catherine here...
     public function validateModel($row) {
         return '';
     }
 
     public function importData($row) {
+        $item = new Item;
+
+        /*
+         * Referencial integrity on:
+         *    1.  Catagory table
+         *    2.  Type table
+         */
+
 
     }
 }
