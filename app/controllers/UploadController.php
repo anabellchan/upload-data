@@ -9,7 +9,7 @@ class UploadController extends \BaseController {
      * Future support:  Excel2003XML, Excel2007, OOCalc, SYLK, Gnumeric
      *
      */
-    const ACCEPTED_EXTENSIONS = array('xlsx' => 'Excel2007', 'csv' => 'CSV', 'xls' => 'CSV');
+    public static $ACCEPTED_EXTENSIONS = array('xlsx' => 'Excel2007', 'csv' => 'CSV', 'xls' => 'CSV');
 
 	/**
 	 * Display main page.
@@ -23,21 +23,21 @@ class UploadController extends \BaseController {
 //	}
 
     public function acceptedExtensions() {
-        $accepted_extensions = array_keys(self::ACCEPTED_EXTENSIONS);
+        $accepted_extensions = array_keys(self::$ACCEPTED_EXTENSIONS);
         return implode(', ' , $accepted_extensions);
     }
     public function isOfValidFileExtension($fileExtension) {
-        return in_array($fileExtension, array_keys(self::ACCEPTED_EXTENSIONS));
+        return in_array($fileExtension, array_keys(self::$ACCEPTED_EXTENSIONS));
     }
 
     public function read($inputFile, $fileExtension) {
         error_reporting(E_ALL);
         ini_set('display_errors', TRUE);
         ini_set('display_startup_errors', TRUE);
-        include 'C:\phpprojects\upload-data\app\models\PHPExcel\IOFactory.php';
+        include '..\upload-data\app\models\PHPExcel\IOFactory.php';
 
         echo "<hr>";
-        $acceptedExtensions = self::ACCEPTED_EXTENSIONS;
+        $acceptedExtensions = self::$ACCEPTED_EXTENSIONS;
         $readerExtension = $acceptedExtensions[$fileExtension];
 //        echo $readerExtension;
         try {
@@ -113,12 +113,6 @@ class UploadController extends \BaseController {
 
     public function validateHeader($row)
     {
-
-        //return $row[1];
-        //return 'test2';
-//        $spreadsheetArray = array();   //this should be filled with data from EXCEL READER
-//        $spreadsheetArray[0] = array("test", "test2", "id", "po_number"); //test results
-
         $invalidHeaders = array();   //if excel column header doesn't match ITEM column - push to this array
 
         try {
@@ -133,7 +127,6 @@ class UploadController extends \BaseController {
                         $match = true;
                         break;
                     }
-
                 }
                 if($match == false){
                     array_push($invalidHeaders, $columnHeaders);  //this adds the invalid column header to array
@@ -153,6 +146,10 @@ class UploadController extends \BaseController {
         return 'no invalid headers';  //now it should iterate through all excel rows and list valid & invalid for confirmation
 
     }
+
+
+
+
 
     /**
 	 * Show the form for creating a new resource.
