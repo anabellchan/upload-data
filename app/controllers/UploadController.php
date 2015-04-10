@@ -11,23 +11,39 @@ class UploadController extends \BaseController {
      */
     public static $ACCEPTED_EXTENSIONS = array('xlsx' => 'Excel2007', 'csv' => 'CSV', 'xls' => 'CSV');
 
-	/**
-	 * Display main page.
-	 *
-	 * @return view - main page
-	 */
-//	public function index()
-//	{
-//        /** PHPExcel_IOFactory */
-//        return View::make("upload");
-//	}
-
     public function acceptedExtensions() {
         $accepted_extensions = array_keys(self::$ACCEPTED_EXTENSIONS);
         return implode(', ' , $accepted_extensions);
     }
+
     public function isOfValidFileExtension($fileExtension) {
         return in_array($fileExtension, array_keys(self::$ACCEPTED_EXTENSIONS));
+    }
+
+    public function submit() {
+
+        /*
+        // debug purposes
+        */
+        $filename = Input::file('file')->getClientOriginalName();
+        $tempFilename = Input::file('file')->getFilename();
+        $inputFile = Input::file('file')->getRealPath();
+
+//        var_dump(Input::file('file'));
+        echo "<h1>Filename: $filename</h1>";
+        echo "<p>Temporary filename: $tempFilename</p>";
+        echo "<p>Temporary path: $inputFile</p>";
+
+        // validate file
+        $fileExtension = strtolower(Input::file('file')->guessClientExtension());
+
+        if (!self::isOfValidFileExtension($fileExtension)) {
+            $error =  "<b>$filename is invalid.  Only accepts the following file extensions: " . self::acceptedExtensions() . "</b>";
+            echo $error;
+        }
+        else {
+            return $this->read($inputFile, $fileExtension);
+        }
     }
 
     public function read($inputFile, $fileExtension) {
@@ -49,9 +65,15 @@ class UploadController extends \BaseController {
         }
 
         $objWorksheet = $objPHPExcel->getActiveSheet();
-        //$s =  $objWorksheet->toarray()[0];
-        $arr = $this->validateHeader($objWorksheet->toarray()[0]);
-        return $arr ;
+        $rows =  $objWorksheet->toarray();
+        $message = '';
+
+        foreach($rows as $row) {
+            $message += validateModel($row);
+        }
+
+        $message = $this->validateHeader($objWorksheet->toarray()[0]);
+//        return $arr ;
 
 //        echo '<table>' . "\n";
 //        foreach ($objWorksheet->getRowIterator() as $row) {
@@ -83,32 +105,6 @@ class UploadController extends \BaseController {
 //        return $objWorksheet->getRowIterator();
 //        $headers = $objWorksheet->getRowIterator()[0];
 //        validateHeader($headers);
-    }
-
-    public function submit() {
-
-        /*
-        // debug purposes
-        */
-        $filename = Input::file('file')->getClientOriginalName();
-        $tempFilename = Input::file('file')->getFilename();
-        $inputFile = Input::file('file')->getRealPath();
-
-//        var_dump(Input::file('file'));
-        echo "<h1>Filename: $filename</h1>";
-        echo "<p>Temporary filename: $tempFilename</p>";
-        echo "<p>Temporary path: $inputFile</p>";
-
-        // validate file
-        $fileExtension = strtolower(Input::file('file')->guessClientExtension());
-
-        if (!self::isOfValidFileExtension($fileExtension)) {
-            $error =  "<b>$filename is invalid.  Only accepts the following file extensions: " . self::acceptedExtensions() . "</b>";
-            echo $error;
-        }
-        else {
-            return $this->read($inputFile, $fileExtension);
-        }
     }
 
     public function validateHeader($row)
@@ -143,82 +139,12 @@ class UploadController extends \BaseController {
             return View::make("home.invalidheading")->with('allItems', array('invalidHeaders' => $invalidHeaders, 'validHeaders' => $itemColumns));
         }
 
-        return 'no invalid headers';  //now it should iterate through all excel rows and list valid & invalid for confirmation
+        return '<p>no invalid headers</p>';  //now it should iterate through all excel rows and list valid & invalid for confirmation
 
     }
 
+    public function validateModel($row) {
 
-
-
-
-    /**
-	 * Show the form for creating a new resource.
-	 *
-	 * @return Response
-	 */
-	public function create()
-	{
-		//
-	}
-
-
-	/**
-	 * Store a newly created resource in storage.
-	 *
-	 * @return Response
-	 */
-	public function store()
-	{
-		//
-	}
-
-
-	/**
-	 * Display the specified resource.
-	 *
-	 * @param  int  $id
-	 * @return Response
-	 */
-	public function show($id)
-	{
-		//
-	}
-
-
-	/**
-	 * Show the form for editing the specified resource.
-	 *
-	 * @param  int  $id
-	 * @return Response
-	 */
-	public function edit($id)
-	{
-		//
-	}
-
-
-	/**
-	 * Update the specified resource in storage.
-	 *
-	 * @param  int  $id
-	 * @return Response
-	 */
-	public function update($id)
-	{
-		//
-	}
-
-
-	/**
-	 * Remove the specified resource from storage.
-	 *
-	 * @param  int  $id
-	 * @return Response
-	 */
-	public function destroy($id)
-	{
-		//
-	}
-
+    }
 
 }
