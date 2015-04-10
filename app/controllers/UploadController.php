@@ -21,7 +21,6 @@ class UploadController extends \BaseController {
     }
 
     public function submit() {
-
         /*
         // debug purposes
         */
@@ -75,7 +74,7 @@ class UploadController extends \BaseController {
          *   3. DB Insert
          */
         $objWorksheet = $objPHPExcel->getActiveSheet();
-        $rows =  $objWorksheet->toarray();
+        $rows =  $objWorksheet->toarray(); dd($rows);
         $message = '';
 
         /* Validate header */
@@ -88,7 +87,7 @@ class UploadController extends \BaseController {
         /* Validate against Item model's validation rules */
         /* Catherine here... */
         foreach($rows as $row) {
-            $message += validateModel($row);
+            $message .= $this->validateModel($row);
         }
 
         if ($message) {
@@ -150,7 +149,16 @@ class UploadController extends \BaseController {
 
     // Catherine here...
     public function validateModel($row) {
-        return '';
+        $invalidRows = [];
+        $validRows = [];
+        $error_message = "";
+        if(! Item::isValid($row)){
+            array_push($invalidRows, $row);
+            $error_message .= $row;
+        } else {
+            array_push($validRows, $row);
+        }
+        return $error_message;
     }
 
     public function importData($row) {
