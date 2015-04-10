@@ -22,7 +22,7 @@ class HomeController extends BaseController {
 
     public function index()
     {
-        $categories = DB::table('categories')->lists('name');
+        $categories = DB::table('categories')->orderBy('name')->lists('name');
 
         return View::make("home.upload")->with('categories', $categories);
 //
