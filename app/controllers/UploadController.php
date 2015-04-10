@@ -56,6 +56,10 @@ class UploadController extends \BaseController {
         $acceptedExtensions = self::$ACCEPTED_EXTENSIONS;
         $readerExtension = $acceptedExtensions[$fileExtension];
 //        echo $readerExtension;
+
+        /*
+         * Load the file
+         */
         try {
             $objReader = PHPExcel_IOFactory::createReader($readerExtension);
             $objReader->setReadDataOnly(true);
@@ -64,47 +68,49 @@ class UploadController extends \BaseController {
             die('Error loading file: '.$e->getMessage());
         }
 
+        /*
+         * Validation follows for:
+         *   1. Header
+         *   2. Item Model
+         *   3. DB Insert
+         */
         $objWorksheet = $objPHPExcel->getActiveSheet();
         $rows =  $objWorksheet->toarray();
         $message = '';
 
+        /* Validate header */
+        $message = $this->validateHeader($objWorksheet->toarray()[0]);
+
+        if ($message) {
+            return $message;         // display list of incorrect header
+        }
+
+        /* Validate against Item model's validation rules */
         foreach($rows as $row) {
             $message += validateModel($row);
         }
 
-        $message = $this->validateHeader($objWorksheet->toarray()[0]);
-//        return $arr ;
+        if ($message) {
+            return $message;          // display list of incorrect rows
+        }
 
-//        echo '<table>' . "\n";
-//        foreach ($objWorksheet->getRowIterator() as $row) {
-//            echo '<tr>' . "\n";
-//
-//            $cellIterator = $row->getCellIterator();
-//            $cellIterator->setIterateOnlyExistingCells(false); // This loops all cells,
-//            // even if it is not set.
-//            // By default, only cells
-//            // that are set will be
-//            // iterated.
-//            foreach ($cellIterator as $cell) {
-//                echo '<td>' . $cell->getValue() . '</td>' . "\n";
-//            }
-//
-//            echo '</tr>' . "\n";
-//        }
-//        echo '</table>' . "\n";
+        /* Attempts to insert data to DB */
+        foreach($rows as $row) {
+            try {
+                $message += importData($row);
+            }
+            catch (Exception $e) {
+                $message += $e->getMessage();
+                break;
+            }
+        }
 
-//        dd($objPHPExcel->getActiveSheet()->getCel(0)->getValue());
+        if ($message) {
+            return $message;
+        }
 
-        //dd($objWorksheet);
-//        foreach ($objWorksheet->getRowIterator() as $row) {
-//            $cellIterator = $row->getCellIterator();
-//            dd($cellIterator);
-//            //return $row;
-//        }
 
-//        return $objWorksheet->getRowIterator();
-//        $headers = $objWorksheet->getRowIterator()[0];
-//        validateHeader($headers);
+
     }
 
     public function validateHeader($row)
@@ -144,7 +150,10 @@ class UploadController extends \BaseController {
     }
 
     public function validateModel($row) {
-
+        return '';
     }
 
+    public function importData($row) {
+
+    }
 }

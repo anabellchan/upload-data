@@ -59,3 +59,38 @@ public function read($inputFileName, $inputFileType) {
         // Echo memory peak usage
         echo date('H:i:s') , " Peak memory usage: " , (memory_get_peak_usage(true) / 1024 / 1024) , " MB" , EOL;
     }
+
+
+    public function read($inputFileName) {
+
+        echo '<table>' . "\n";
+        foreach ($objWorksheet->getRowIterator() as $row) {
+            echo '<tr>' . "\n";
+
+            $cellIterator = $row->getCellIterator();
+            $cellIterator->setIterateOnlyExistingCells(false); // This loops all cells,
+            // even if it is not set.
+            // By default, only cells
+            // that are set will be
+            // iterated.
+            foreach ($cellIterator as $cell) {
+                echo '<td>' . $cell->getValue() . '</td>' . "\n";
+            }
+
+            echo '</tr>' . "\n";
+        }
+        echo '</table>' . "\n";
+
+        dd($objPHPExcel->getActiveSheet()->getCel(0)->getValue());
+
+        dd($objWorksheet);
+        foreach ($objWorksheet->getRowIterator() as $row) {
+            $cellIterator = $row->getCellIterator();
+            dd($cellIterator);
+            //return $row;
+        }
+
+        return $objWorksheet->getRowIterator();
+        $headers = $objWorksheet->getRowIterator()[0];
+        validateHeader($headers);
+    }
