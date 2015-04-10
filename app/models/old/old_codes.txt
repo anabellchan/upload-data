@@ -1,0 +1,61 @@
+/**
+ * Created by PhpStorm.
+ * User: Anabell
+ * Date: 2015-04-09
+ * Time: 5:08 PM
+ */
+public function read($inputFileName, $inputFileType) {
+    /** Include Excel Reader **/
+    set_include_path(get_include_path() . PATH_SEPARATOR . '../models/');
+    include 'C:\phpprojects\upload-data\app\models\PHPExcel\IOFactory.php';
+
+    try {
+        /** Load $inputFileName to a PHPExcel Object  **/
+        echo '<p>Loading file ',pathinfo($inputFileName,PATHINFO_BASENAME),' using IOFactory to identify the format</p>';
+//        $objReader = PHPExcel_IOFactory::createReader($inputFileType);
+//        $objReader->setReadDataOnly(true);
+        $objPHPExcel = PHPExcel_IOFactory::load($inputFileName);
+//        $objPHPExcel = PHPExcel_IOFactory::load($inputFileName);
+    } catch(PHPExcel_Reader_Exception $e) {
+        echo "<p>Error reading file.</p>";
+        die('Error loading file: '.$e->getMessage());
+    }
+    echo '<hr />';
+    echo "<p>Showing cell data</p>";
+    $v = $objPHPExcel->getActiveSheet()->getCell('B8')->getValue();
+
+    echo "<p>$v</p>";
+//        $sheetData = $objPHPExcel->getActiveSheet()->toArray(null,true,true,true);
+//        $objReader = PHPExcel_IOFactory::createReader('Excel2007');
+//
+//        echo $objPHPExcel->getActiveSheet()->getCell('F2')->getValue();
+
+//        var_dump($sheetData);
+
+}
+
+    public function read($inputFileName) {
+
+        if (!file_exists($inputFileName)) {
+            die("File does not exist.");
+        }
+
+        $objReader = PHPExcel_IOFactory::createReader('Excel2007');
+        $objPHPExcel = $objReader->load($inputFileName);
+        echo date('H:i:s') , " Iterate worksheets" , EOL;
+        foreach ($objPHPExcel->getWorksheetIterator() as $worksheet) {
+            echo 'Worksheet - ' , $worksheet->getTitle() , EOL;
+            foreach ($worksheet->getRowIterator() as $row) {
+                echo '    Row number - ' , $row->getRowIndex() , EOL;
+                $cellIterator = $row->getCellIterator();
+                $cellIterator->setIterateOnlyExistingCells(false); // Loop all cells, even if it is not set
+                foreach ($cellIterator as $cell) {
+                    if (!is_null($cell)) {
+                        echo '        Cell - ' , $cell->getCoordinate() , ' - ' , $cell->getCalculatedValue() , EOL;
+                    }
+                }
+            }
+        }
+        // Echo memory peak usage
+        echo date('H:i:s') , " Peak memory usage: " , (memory_get_peak_usage(true) / 1024 / 1024) , " MB" , EOL;
+    }
