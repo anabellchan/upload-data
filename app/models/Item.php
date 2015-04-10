@@ -33,9 +33,10 @@ class Item extends Eloquent implements UserInterface, RemindableInterface {
 	//protected $hidden = array('password', 'remember_token');
 
 	public static $rules = [
-		'kind_id'=>'required',
-		'category_id'=>'required'
+		'kind_id'=>'required|integer|digits_between:0,10',
+		'category_id'=>'required|integer|digits_between:0,10'
     ];
+
 
 	public static function isValid($dataToBeValidated)
 	{
