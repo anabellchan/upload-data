@@ -8,12 +8,13 @@
 
 
 @section('maincontent')
-	<div class="welcome">
+	<div>
         <h1>Upload Data</h1>
         <!-- upload image -->
         {{ HTML::image('upload.png', 'Upload an Excel spreadsheet to database.') }}
         <br/>
         <br/>
+        {{ Form::open(['url'=>'upload/file','files'=>true]) }}
         {{ Form::label('categories','Select Category for Uploaded Items',['id'=>'','class'=>'']) }}
         <!--{{ Form::select('categories', array('L' => 'Large', 'S' => 'Small')) }}-->
         <select id="categories" name="categories">
@@ -26,7 +27,7 @@
 
         <br/>
         <br/>
-        {{ Form::open(['url'=>'upload/file','files'=>true]) }}
+
         {{ Form::label('file','File',['id'=>'','class'=>'']) }}
         {{ Form::file('file','',['id'=>'','class'=>'']) }}
         <br/>
@@ -37,6 +38,9 @@
         {{ Form::reset('Reset') }}
 
         {{ Form::close() }}
-
 	</div>
+    <div>
+        <br>
+        <a href="{{ URL::to('upload/writeTemplate') }}">Download Inventory Spreadsheet Template</a>
+    </div>
 @stop
