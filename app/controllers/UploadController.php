@@ -92,13 +92,18 @@ class UploadController extends \BaseController {
         /* Validate header */
         //dd($rows);
 
-        return $this->validateHeader($rows[0]);
+
+        $itemColumns = Schema::getColumnListing('items');   //this gets array of all column headings for ITEMS
+        array_push($itemColumns, 'item_name');   //add item_name to required column - will be used for kind table
+        return $itemColumns;
+
+        $message = $this->validateHeader($rows[0], $itemColumns);
 //        $message = $this->validateHeader($objWorksheet->toarray()[HEADER_INDEX]);
 
-//        if ($message) {
-//            return $message;         // display list of incorrect header
-//        }
-        //return 'perfect - all headers valid';
+        if ($message) {
+            return $message;         // display list of incorrect header
+        }
+        return 'perfect - all headers valid';
 
         /* Validate against Item model's validation rules */
         /* Catherine here... */
@@ -144,57 +149,76 @@ class UploadController extends \BaseController {
         return $error_message;
     }
 
-
-
     public function writeTemplate() {
-//        return 'tester';
         error_reporting(E_ALL);
-        ini_set('include_path', ini_get('include_path').';../Classes/');
-        include '..\upload-data\app\models\PHPExcel.php';
-        include '..\upload-data\app\models\PHPExcel\Writer/Excel2007.php';
+        ini_set('display_errors', TRUE);
+        ini_set('display_startup_errors', TRUE);
+        date_default_timezone_set('America/Los_Angeles');
 
-        // Create new PHPExcel object
-        echo date('H:i:s') . " Create new PHPExcel object\n";
+        if (PHP_SAPI == 'cli')
+            die('This example should only be run from a Web Browser');
+
+        /** Include PHPExcel */
+//        include '..\upload-data\app\models\PHPExcel.php';
+
+// Create new PHPExcel object
         $objPHPExcel = new PHPExcel();
 
-        // Set properties
-        echo date('H:i:s') . " Set properties\n";
-        $objPHPExcel->getProperties()->setCreator("Maarten Balliauw");
-        $objPHPExcel->getProperties()->setLastModifiedBy("Maarten Balliauw");
-        $objPHPExcel->getProperties()->setTitle("Office 2007 XLSX Test Document");
-        $objPHPExcel->getProperties()->setSubject("Office 2007 XLSX Test Document");
-        $objPHPExcel->getProperties()->setDescription("Test document for Office 2007 XLSX, generated using PHP classes.");
+// Set document properties
+        $objPHPExcel->getProperties()->setCreator("Maarten Balliauw")
+            ->setLastModifiedBy("Maarten Balliauw")
+            ->setTitle("Office 2007 XLSX Test Document")
+            ->setSubject("Office 2007 XLSX Test Document")
+            ->setDescription("Test document for Office 2007 XLSX, generated using PHP classes.")
+            ->setKeywords("office 2007 openxml php")
+            ->setCategory("Test result file");
 
 
-        // Add some data
-        echo date('H:i:s') . " Add some data\n";
-        $objPHPExcel->setActiveSheetIndex(0);
-        $objPHPExcel->getActiveSheet()->SetCellValue('A1', 'Hello');
-        $objPHPExcel->getActiveSheet()->SetCellValue('B2', 'world!');
-        $objPHPExcel->getActiveSheet()->SetCellValue('C1', 'Hello');
-        $objPHPExcel->getActiveSheet()->SetCellValue('D2', 'world!');
+// Add some data
+        $objPHPExcel->setActiveSheetIndex(0)
+            ->setCellValue('A1', 'Hello')
+            ->setCellValue('B2', 'world!')
+            ->setCellValue('C1', 'Hello')
+            ->setCellValue('D2', 'world!');
 
-        // Rename sheet
-        echo date('H:i:s') . " Rename sheet\n";
+// Miscellaneous glyphs, UTF-8
+        $objPHPExcel->setActiveSheetIndex(0)
+            ->setCellValue('A4', 'Miscellaneous glyphs')
+            ->setCellValue('A5', 'éàèùâêîôûëïüÿäöüç')
+            ->setCellValue('A6', 'IT WORKS!!!');
+
+// Rename worksheet
         $objPHPExcel->getActiveSheet()->setTitle('Simple');
 
 
-        // Save Excel 2007 file
-        echo date('H:i:s') . " Write to Excel2007 format\n";
-        $objWriter = new PHPExcel_Writer_Excel2007($objPHPExcel);
-        $objWriter->save(str_replace('.php', '.xlsx', __FILE__));
+// Set active sheet index to the first sheet, so Excel opens this as the first sheet
+        $objPHPExcel->setActiveSheetIndex(0);
 
-        // Echo done
-        echo date('H:i:s') . " Done writing file.\r\n";
+
+// Redirect output to a client’s web browser (Excel5)
+        header('Content-Type: application/vnd.ms-excel');
+        header('Content-Disposition: attachment;filename="01simple.xls"');
+        header('Cache-Control: max-age=0');
+// If you're serving to IE 9, then the following may be needed
+        header('Cache-Control: max-age=1');
+
+// If you're serving to IE over SSL, then the following may be needed
+        header ('Expires: Mon, 26 Jul 1997 05:00:00 GMT'); // Date in the past
+        header ('Last-Modified: '.gmdate('D, d M Y H:i:s').' GMT'); // always modified
+        header ('Cache-Control: cache, must-revalidate'); // HTTP/1.1
+        header ('Pragma: public'); // HTTP/1.0
+
+        $objWriter = PHPExcel_IOFactory::createWriter($objPHPExcel, 'Excel5');
+        $objWriter->save('php://output');
+
     }
 
-    public function validateHeader($row)
+    public function validateHeader($row, $itemColumns)
     {
         $invalidHeaders = array();   //if excel column header doesn't match ITEM column - push to this array
 
         try {
-            $itemColumns = Schema::getColumnListing('items');   //this gets array of all column headings for ITEMS
-            array_push($itemColumns, 'item_name');   //add item_name to required column - will be used for kind table
+
             //return $itemColumns;
             $itemName = false;
             //go through top header row of excel data compare headers to ITEM columns
