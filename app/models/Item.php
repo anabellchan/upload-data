@@ -38,9 +38,10 @@ class Item extends Eloquent implements UserInterface, RemindableInterface {
     ];
 
 
-	public static function isValid($dataToBeValidated)
+	public function isValid()
 	{
-		$v = Validator::make($dataToBeValidated, static::$rules);
+//		$v = Validator::make($dataToBeValidated, static::$rules);
+        $v = Validator::make($this->attributes, static::$rules);
 
 		if($v->passes())
 		{
@@ -50,5 +51,6 @@ class Item extends Eloquent implements UserInterface, RemindableInterface {
 		static::$messages = $v->messages();
 		return false;
 	}
+
 
 }
