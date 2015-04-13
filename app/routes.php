@@ -10,11 +10,13 @@
 | and give it the Closure to execute when that URI is requested.
 |
 */
+Route::get('upload/writeTemplate', 'UploadController@writeTemplate');
+//Route::any('upload/read', 'UploadController@read');
 
-Route::get('phpinfo', function()
-{
-    phpinfo();
-});
+//Route::get('phpinfo', function()
+//{
+//    phpinfo();
+//});
 
 //Route::resource('upload', "HomeController@showWelcome");
 Route::get('/', 'HomeController@index');
