@@ -1,4 +1,5 @@
 <?php
+require_once('..\upload-data\app\models\TriumfRow.php');
 
 class UploadController extends \BaseController {
 
@@ -9,7 +10,10 @@ class UploadController extends \BaseController {
      * Future support:  Excel2003XML, Excel2007, OOCalc, SYLK, Gnumeric
      *
      */
+    const HEADER_INDEX = 0;
     public static $ACCEPTED_EXTENSIONS = array('xlsx' => 'Excel2007', 'csv' => 'CSV', 'xls' => 'CSV');
+//    public static $message = '';  // should have only one message variable
+
 
     public function acceptedExtensions() {
         $accepted_extensions = array_keys(self::$ACCEPTED_EXTENSIONS);
@@ -30,19 +34,24 @@ class UploadController extends \BaseController {
         $inputFile = Input::file('file')->getRealPath();
 
 //        var_dump(Input::file('file'));
+//        echo "<p>Temporary filename: $tempFilename</p>";
+//        echo "<p>Temporary path: $inputFile</p>";
+
         echo "<h1>Filename: $filename</h1>";
-        echo "<p>Temporary filename: $tempFilename</p>";
-        echo "<p>Temporary path: $inputFile</p>";
 
         // validate file
         $fileExtension = strtolower(Input::file('file')->guessClientExtension());
 
         if (!self::isOfValidFileExtension($fileExtension)) {
-            $error =  "<b>$filename is invalid.  Only accepts the following file extensions: " . self::acceptedExtensions() . "</b>";
-            echo $error;
+            $message =  "<b>$filename is invalid.  Only accepts the following file extensions: " . self::acceptedExtensions() . "</b>";
+            return View::make("home.error")->with('message', $message);
         }
         else {
-            return $this->read($inputFile, $fileExtension);
+            try {
+                $this->read($inputFile, $fileExtension);
+            } catch (Exception $e) {
+                return View::make("home.error")->with('message', $e->getMessage());
+            }
         }
     }
 
@@ -55,7 +64,6 @@ class UploadController extends \BaseController {
         echo "<hr>";
         $acceptedExtensions = self::$ACCEPTED_EXTENSIONS;
         $readerExtension = $acceptedExtensions[$fileExtension];
-//        echo $readerExtension;
 
         /*
          * Load the file
@@ -65,7 +73,8 @@ class UploadController extends \BaseController {
             $objReader->setReadDataOnly(true);
             $objPHPExcel = $objReader->load($inputFile);
         } catch (PHPExcel_Reader_Exception $e) {
-            die('Error loading file: '.$e->getMessage());
+            throw new Exception('Error loading file: '.$e->getMessage());
+//            die('Error loading file: '.$e->getMessage());
         }
 
         /*
@@ -76,39 +85,30 @@ class UploadController extends \BaseController {
          */
         $objWorksheet = $objPHPExcel->getActiveSheet();
         $rows =  $objWorksheet->toarray();
-        $message = '';
 
         /* Validate header */
-        $message = $this->validateHeader($objWorksheet->toarray()[0]);
+        $message = $this->validateHeader($objWorksheet->toarray()[HEADER_INDEX]);
 
         if ($message) {
             return $message;         // display list of incorrect header
         }
 
-        /* Validate against Item model's validation rules */
-        /* Catherine here... */
-        foreach($rows as $row) {
-            $message += validateModel($row);
-        }
+//        /* Validate against Item model's validation rules */
+//        /* Catherine here... */
+//        foreach($rows as $row) {
+//            $message += validateModel($row);
+//        }
+//
+//        if ($message) {
+//            return $message;          // display list of incorrect rows
+//        }
 
-        if ($message) {
-            return $message;          // display list of incorrect rows
-        }
-
-        /* Attempts to insert data to DB */
-        foreach($rows as $row) {
-            try {
-                $message += importData($row);
-            }
-            catch (Exception $e) {
-                $message += $e->getMessage();
-                break;
-            }
-        }
-
-        if ($message) {
-            return $message;
-        }
+//        /* Attempts to insert data to DB */
+//        try {
+//            $this->importData($objWorksheet);
+//        } catch (Exception $e) {
+//            throw new Exception($e->getMessage());
+//        }
 
     }
 
@@ -153,15 +153,64 @@ class UploadController extends \BaseController {
         return '';
     }
 
-    public function importData($row) {
-        $item = new Item;
+    public function importData($worksheet) {
+        $badRows = [];
 
-        /*
-         * Referencial integrity on:
-         *    1.  Catagory table
-         *    2.  Type table
-         */
+        foreach ($worksheet->getRowIterator() as $row) {
+            /*
+             *    Referencial integrity on:
+             *    1.  Catagory table : does not allow creation of new category if it doesn't exist.
+             *    2.  Type table : creates a new type if it doesn't exist.
+             */
 
+            $item = new Item($row);
+            if (!$this->existInCategory($item->category_id)) {
+                return 'Category $item->category_id does not exist yet.  Create a new one, or use an existing one.';
+            }
+            if ($this->existInKind() && $this->existInCategory()) {
+                $item->save();
+            }
+
+            try {
+                $this->insertRow($row);
+            }
+            catch (Exception $e) {
+                array_add($badRows, $row->getRowIndex(), $e->getMessage());
+//                $tr = new TriumfRow($row);
+//                array_add($badRows, $tr->getRowNum(), $message);
+//                $message += $e->getMessage();
+                break;
+            }
+
+        }
+
+
+
+
+    }
+    public function insertRow() {
+        return '';
+        try {
+
+        }
+        catch (Exception $e) {
+            throw new Exception($e->getMessage());
+        }
+    }
+
+    public function existInKind() {
+        return '';
+        $kind = new Kind;
+        Kind::$kind->find($item->getRow()->kind_id);
+    }
+
+    public function existInCategory() {
+        $category = new Category;
+        $id = $item->Row()->category_id;
+        $result = Category::$category->find($categoryID);
+        if (!result) {
+            throw exception("Category $id does not exist.");
+        }
 
     }
 }

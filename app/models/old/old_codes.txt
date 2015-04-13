@@ -61,7 +61,7 @@ public function read($inputFileName, $inputFileType) {
     }
 
 
-    public function read($inputFileName) {
+    public function read_workingVer($inputFileName) {
 
         echo '<table>' . "\n";
         foreach ($objWorksheet->getRowIterator() as $row) {
