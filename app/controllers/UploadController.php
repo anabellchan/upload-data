@@ -13,7 +13,7 @@ class UploadController extends \BaseController
      */
     const HEADER_INDEX = 0;
     public static $arrFields = [];
-
+    public static $categoryID;
     public static $ACCEPTED_EXTENSIONS = array('xlsx' => 'Excel2007', 'csv' => 'CSV', 'xls' => 'CSV');
 
 //    public static $message = '';  // should have only one message variable
@@ -74,10 +74,8 @@ class UploadController extends \BaseController
         /*
          * Load the file
          */
-
-        // assign the correct reader for this file
         $acceptedExtensions = self::$ACCEPTED_EXTENSIONS;
-        $readerExtension = $acceptedExtensions[$fileExtension];
+        $readerExtension = $acceptedExtensions[$fileExtension];          // assign the correct reader for this file
         try {
             echo "<p>File loading.</p>";
             $objReader = PHPExcel_IOFactory::createReader($readerExtension);
@@ -87,12 +85,9 @@ class UploadController extends \BaseController
             throw new Exception('Error loading file: ' . $e->getMessage());
         }
 
+
         /*
-         * Validation follows for:
-         *   1. Header
-         *   2. Category
-         *   3. Item Model
-         *   4. DB Insert
+         * Get active sheet
          */
         try {
             echo "<p>Spreadsheet loading.</p>";
@@ -105,9 +100,6 @@ class UploadController extends \BaseController
         /*
         *  Validate header
         */
-        //dd($rows);
-
-
         echo "<p>Validating header.</p>";
         $itemColumns = Schema::getColumnListing('items');   //this gets array of all column headings for ITEMS
         array_push($itemColumns, 'item_name');   //add item_name to required column - will be used for kind table
@@ -124,12 +116,11 @@ class UploadController extends \BaseController
 
         /*
         *  Validate Category
-        *  Catherine here...
         */
-        echo "<p>Validating item's category.</p>";
-        $categoryID = DB::table('categories')->where('name', $category)->first()->id;
-        if ($categoryID == "" or $categoryID == null) {
-            throw new Exception('invalid category selected');
+        try {
+            $this->validateCategory($category);
+        } catch (Exception $e) {
+            throw new Exception('read validate category: ' . $e->getMessage());
         }
 
 
@@ -138,15 +129,31 @@ class UploadController extends \BaseController
         */
         try {
             echo "<p>Importing data.</p>";
-            return $this->importData($objWorksheet, $categoryID, $itemColumns);
+            return $this->importData($objWorksheet, $itemColumns);
         } catch (Exception $e) {
-            throw new Exception('read: ' . $e->getMessage());
+            throw new Exception('read insert row: ' . $e->getMessage());
         }
     }
 
+    /*
+     *  validateCategory
+     *  throws: invalid category error
+     */
+    public function validateCategory($category) {
+        echo "<p>Validating item's category.</p>";
+        self::$categoryID = DB::table('categories')->where('name', $category)->first()->id;
+        if (self::$categoryID == "" or self::$categoryID == null) {
+            throw new Exception('invalid category selected');
+        } else {
+            echo "Category validated.";
+        }
+    }
 
-    //This method takes a multi-dimensional array as an argument
-
+    /*
+     *   validateRows
+     *   - This method takes a multi-dimensional array as an argument
+     *   - returns: $invalidRows
+     */
     public function validateRows($excelSheet)
     {
         echo "<p>Validate model.</p>";
@@ -169,6 +176,10 @@ class UploadController extends \BaseController
     }
 
 
+    /*
+     *  writeTemplate
+     *  - creates a template file
+     */
     public function writeTemplate()
     {
         $itemColumns = $this->getClientItemHeaders();
@@ -240,6 +251,10 @@ class UploadController extends \BaseController
         $objWriter->save('php://output');
     }
 
+    /*
+     *   validateHeader
+     *   - loads View to show invalid headers
+     */
     public function validateHeader($row, $itemColumns)
     {
         $invalidHeaders = array();   //if excel column header doesn't match ITEM column - push to this array
@@ -282,11 +297,15 @@ class UploadController extends \BaseController
     }
 
 
-
-    public function importData($worksheet, $categoryID, $itemColumns)
+    /*
+     *   importData
+     *   - inserts data to DB
+     *   - validates type name
+     *   - throws error for invalid DB transactions
+     */
+    public function importData($worksheet, $itemColumns)
     {
         $headers = $worksheet->toarray()[0];
-
         /*
          *    Check referencial integrity on:
          *    1.  Catagory table : does not allow creation of new category if it doesn't exist.
@@ -306,17 +325,20 @@ class UploadController extends \BaseController
         // row 1 is '1'
         for ($row = 2; $row <= $numOfRows; $row++) {
             $item = new Item();
-            $item->category_id = $categoryID;
+            $item->category_id = intval(self::$categoryID);
             $length = count($headers);
             for ($col = 0; $col < $length; $col++) {
                 $value = $worksheet->getCellByColumnAndRow($col, $row)->getValue();
                 $field = $headers[$col];
                 $item->$field = $value;
-                //echo '<p>' . $field . ': ' . $item->$field . '</p>';
+
+                //echo '<hr><p>' . $field . ': ' . $item->$field . '</p>';
             }
 
 
-            // if kind do not exists, create a new kind
+            /*
+             *   Validate Kind - if kind do not exists, create a new kind.
+             */
             try {
                 echo "<p>Validating item's kind.</p>";
                 $this->addKind($item);
@@ -324,29 +346,43 @@ class UploadController extends \BaseController
                 array_add($badRows, $row, 'importData: ' . $e->getMessage());
             }
 
-            // validate item against the validation rules of Item
-            if (!$item->isValid()) {
-                echo "<p>Validating against model's validation rule.</p>";
-                array_add($badRows, $row, 'Validation failed.');
-                continue;
-            }
+            /*
+             *   Validate against model - validate item against the validation rules of Item
+             */
+//            echo "<p>Validating against model's validation rule.</p>";
+//            $item->type_id = '';
+//            $item->category_id = '';
+//            if (!$item->isValid()) {
+//                array_add($badRows, $row, $item->messages);
+////                return $badRows;
+//            }
+//            if ($badRows != []) {
+//
+//            }
 //            var_dump($item);
 
-            // finally, safely arrives here, save item!
-//            $item->save();
+            /*
+             *   Insert Item to DB - save item!
+             */
+            try {
+                $item->save();
+                echo('<p>Item saved.</p>');
+            } catch (Exception $e) {
+                throw new Exception('read - insert Item: ' . $e->getMessage());
+            }
 
         }
     }
 
     /*
      *  addKind
-     *    1. If kind do not exist, create a new one
-     *    2. If kind already exists, do nothing
+     *    - If kind do not exist, create a new one
+     *    - If kind already exists, do nothing
      */
     public function addKind($item)
     {
-        echo '<hr>';
-        $name = intval($item->item_name);
+        $name = $item->item_name;
+        echo "<h1>$name</h1>";
         $result = Kind::where('name', '=', $name)->first();
         if ($result) {
             echo "<p>Kind exists.</p>";
@@ -369,6 +405,10 @@ class UploadController extends \BaseController
 
     }
 
+    /*
+     *   getClientItemHeaders
+     *
+     */
     public function getClientItemHeaders()
     {
         $itemColumns = Schema::getColumnListing('items');   //this gets array of all column headings for ITEMS

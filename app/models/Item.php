@@ -7,7 +7,7 @@ use Illuminate\Auth\Reminders\RemindableInterface;
 
 class Item extends Eloquent implements UserInterface, RemindableInterface {
 
-	public $timestamps = true;
+	public $timestamps = false;
 
 	protected $fillable = ['barcode', 'kind_id', 'category_id', 'owner', 'current_location', 'serial_number',
                             'po_number', 'cfi', 'requisitioner', 'received', 'warranty_until', 'calibration_until',
