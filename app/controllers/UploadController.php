@@ -140,20 +140,19 @@ class UploadController extends \BaseController
         }
     }
 
+
     // Catherine here...
-    public function validateModel($row)
+    public function validateRows($excelSheet)
     {
-        $invalidRows = [];
-        $validRows = [];
-        $error_message = "";
-        if (!Item::isValid($row)) {
-            array_push($invalidRows, $row);
-            $error_message .= $row;
-        } else {
-            array_push($validRows, $row);
+        $itemNameExists = false;
+        $headers = $excelSheet->toarray()[0];
+        if ( ! is_array($excelSheet[0]) ) {
+            return 'First row excelSheet is not an array. ';
         }
-        return $error_message;
+        $position = array_search('item_name', $headers);
+        
     }
+
 
     public function writeTemplate()
     {
@@ -217,7 +216,6 @@ class UploadController extends \BaseController
 
         $objWriter = PHPExcel_IOFactory::createWriter($objPHPExcel, 'Excel5');
         $objWriter->save('php://output');
-
     }
 
     public function validateHeader($row, $itemColumns)
