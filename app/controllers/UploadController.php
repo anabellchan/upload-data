@@ -36,24 +36,21 @@ class UploadController extends \BaseController
         // debug purposes
         */
         $category = Input::get('categories');
-
         $filename = Input::file('file')->getClientOriginalName();
-        $tempFilename = Input::file('file')->getFilename();
         $inputFile = Input::file('file')->getRealPath();
 
-//        var_dump(Input::file('file'));
-//        echo "<p>Temporary filename: $tempFilename</p>";
-//        echo "<p>Temporary path: $inputFile</p>";
-
         echo "<h1>Filename: $filename</h1>";
+        echo "<hr>";
+
 
         // validate file
         $fileExtension = strtolower(Input::file('file')->guessClientExtension());
 
         if (!self::isOfValidFileExtension($fileExtension)) {
-            $message = "<b>$filename is invalid.  Only accepts the following file extensions: " . self::acceptedExtensions() . "</b>";
+            $message = "<p>$filename is invalid.  Only accepts the following file extensions: " . self::acceptedExtensions() . "</p>";
             return View::make("home.error")->with('message', $message);
         } else {
+            echo "<p>File extension valid.</p>";
             try {
                 return $this->read($inputFile, $fileExtension, $category);
             } catch (Exception $e) {
@@ -64,42 +61,53 @@ class UploadController extends \BaseController
 
     public function read($inputFile, $fileExtension, $category)
     {
-        //return $category;
-        //return 'read action';
+        /*
+        * Initialization
+        */
         error_reporting(E_ALL);
         ini_set('display_errors', TRUE);
         ini_set('display_startup_errors', TRUE);
         include '..\upload-data\app\models\PHPExcel\IOFactory.php';
 
-        echo "<hr>";
-        $acceptedExtensions = self::$ACCEPTED_EXTENSIONS;
-        $readerExtension = $acceptedExtensions[$fileExtension];
+
 
         /*
          * Load the file
          */
+
+        // assign the correct reader for this file
+        $acceptedExtensions = self::$ACCEPTED_EXTENSIONS;
+        $readerExtension = $acceptedExtensions[$fileExtension];
         try {
+            echo "<p>File loading.</p>";
             $objReader = PHPExcel_IOFactory::createReader($readerExtension);
             $objReader->setReadDataOnly(true);
             $objPHPExcel = $objReader->load($inputFile);
         } catch (PHPExcel_Reader_Exception $e) {
             throw new Exception('Error loading file: ' . $e->getMessage());
-//            die('Error loading file: '.$e->getMessage());
         }
 
         /*
          * Validation follows for:
          *   1. Header
-         *   2. Item Model
-         *   3. DB Insert
+         *   2. Category
+         *   3. Item Model
+         *   4. DB Insert
          */
-        $objWorksheet = $objPHPExcel->getActiveSheet();
-        $rows = $objWorksheet->toarray();
+        try {
+            echo "<p>Spreadsheet loading.</p>";
+            $objWorksheet = $objPHPExcel->getActiveSheet();
+            $rows = $objWorksheet->toarray();
+        } catch (Exception $e) {
+            throw new Exception('Error loading worksheet: ' . $e->getMessage());
+        }
 
-        /* Validate header */
+        /*
+        *  Validate header
+        */
         //dd($rows);
 
-
+        echo "<p>Validating header.</p>";
         $itemColumns = Schema::getColumnListing('items');   //this gets array of all column headings for ITEMS
         array_push($itemColumns, 'item_name');   //add item_name to required column - will be used for kind table
         //return $itemColumns;
@@ -111,29 +119,22 @@ class UploadController extends \BaseController
 //        }
 //        return 'perfect - all headers valid';
 
-        /* Validate against Item model's validation rules */
-        /* Catherine here... */
+        /*
+        *  Validate Category
+        *  Catherine here...
+        */
+        echo "<p>Validating item's category.</p>";
         $categoryID = DB::table('categories')->where('name', $category)->first()->id;
         if ($categoryID == "" or $categoryID == null) {
             throw new Exception('invalid category selected');
         }
 
-//        $validRows = array();
-//        $invalidRows = array();
-//        for($x = 1; $x < count($rows); $x++) {
-//            //return $rows[51];
-//            //$message .= $this->validateModel($row);
-//
-//
-//
-//        }
-//
-//        if ($message) {
-//            throw new Exception($message);         // display list of incorrect rows
-//        }
 
-        /* Attempts to insert data to DB */
+        /*
+        *  Attempts to insert data to DB
+        */
         try {
+            echo "<p>Importing data.</p>";
             return $this->importData($objWorksheet, $categoryID, $itemColumns);
         } catch (Exception $e) {
             throw new Exception('read: ' . $e->getMessage());
@@ -143,6 +144,7 @@ class UploadController extends \BaseController
     // Catherine here...
     public function validateModel($row)
     {
+        echo "<p>Validate model.</p>";
         $invalidRows = [];
         $validRows = [];
         $error_message = "";
@@ -262,6 +264,7 @@ class UploadController extends \BaseController
     }
 
 
+
     public function importData($worksheet, $categoryID, $itemColumns)
     {
         $headers = $worksheet->toarray()[0];
@@ -285,20 +288,19 @@ class UploadController extends \BaseController
         // row 1 is '1'
         for ($row = 2; $row <= $numOfRows; $row++) {
             $item = new Item();
-            // initialize item
-            // ignore 'item_name' column, so only go up to count()-1
-            // this is so we can validate against model Item, w/c doesn't expect 'item_name'
+            $item->category_id = $categoryID;
             $length = count($headers);
             for ($col = 0; $col < $length; $col++) {
                 $value = $worksheet->getCellByColumnAndRow($col, $row)->getValue();
                 $field = $headers[$col];
                 $item->$field = $value;
-                echo '<p>' . $field . ': ' . $item->$field . '</p>';
+                //echo '<p>' . $field . ': ' . $item->$field . '</p>';
             }
 
 
             // if kind do not exists, create a new kind
             try {
+                echo "<p>Validating item's kind.</p>";
                 $this->addKind($item);
             } catch (Exception $e) {
                 array_add($badRows, $row, 'importData: ' . $e->getMessage());
@@ -306,12 +308,14 @@ class UploadController extends \BaseController
 
             // validate item against the validation rules of Item
             if (!$item->isValid()) {
-                array_add($badRows, $row->getRowIndex(), 'Validation failed.');
+                echo "<p>Validating against model's validation rule.</p>";
+                array_add($badRows, $row, 'Validation failed.');
                 continue;
             }
+//            var_dump($item);
 
             // finally, safely arrives here, save item!
-            $item->save();
+//            $item->save();
 
         }
     }
@@ -327,18 +331,23 @@ class UploadController extends \BaseController
         $name = intval($item->item_name);
         $result = Kind::where('name', '=', $name)->first();
         if ($result) {
-            echo 'kind exist.';
-            return '';
+            echo "<p>Kind exists.</p>";
+            $item->kind_id = $result->id;
         } else {
             try {
                 $kind = new Kind;
                 $kind->name = $name;
                 $kind->save();
-                echo 'adding kind to db...';
+                echo "<p>Item's kind is new, adding " . $name . " to kinds table...</p>";
             } catch (Exception $e) {
                 throw new Exception('addKind: ' . $e->getMessage());
             }
-        }
-    }
+            $result = Kind::where('name', '=', $name)->first();
+            $item->kind_id = $result->id;
 
+        }
+        unset($item->item_name);
+        //var_dump($item);
+
+    }
 }

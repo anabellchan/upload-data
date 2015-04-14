@@ -4,6 +4,38 @@
  * Date: 2015-04-09
  * Time: 5:08 PM
  */
+
+     public function submit()
+     {
+         /*
+         // debug purposes
+         */
+         $category = Input::get('categories');
+
+         $filename = Input::file('file')->getClientOriginalName();
+         //$tempFilename = Input::file('file')->getFilename();
+         $inputFile = Input::file('file')->getRealPath();
+
+ //        var_dump(Input::file('file'));
+ //        echo "<p>Temporary filename: $tempFilename</p>";
+ //        echo "<p>Temporary path: $inputFile</p>";
+
+         echo "<h1>Filename: $filename</h1>";
+
+         // validate file
+         $fileExtension = strtolower(Input::file('file')->guessClientExtension());
+
+         if (!self::isOfValidFileExtension($fileExtension)) {
+             $message = "<b>$filename is invalid.  Only accepts the following file extensions: " . self::acceptedExtensions() . "</b>";
+             return View::make("home.error")->with('message', $message);
+         } else {
+             try {
+                 return $this->read($inputFile, $fileExtension, $category);
+             } catch (Exception $e) {
+                 return View::make("home.error")->with('message', 'submit: ' . $e->getMessage());
+             }
+         }
+     }
 public function read($inputFileName, $inputFileType) {
     /** Include Excel Reader **/
     set_include_path(get_include_path() . PATH_SEPARATOR . '../models/');
