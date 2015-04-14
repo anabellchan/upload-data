@@ -142,16 +142,26 @@ class UploadController extends \BaseController
     }
 
 
-    // Catherine here...
+    //This method takes a multi-dimensional array as an argument
+
     public function validateRows($excelSheet)
     {
+        $invalidRows = [];
         $itemNameExists = false;
         $headers = $excelSheet->toarray()[0];
         if ( ! is_array($excelSheet[0]) ) {
             return 'First row excelSheet is not an array. ';
         }
         $position = array_search('item_name', $headers);
-        
+        $numOfRows = $excelSheet->getHighestDataRow();
+
+        for ($i = 0; $i < $numOfRows; $i++){
+            $value = $excelSheet->getCellByColumnAndRow($position, $i)->getValue();
+            if ($value == null || $value == ""){
+                array_push($invalidRows, $excelSheet[$i]);
+            }
+        }
+        return $invalidRows;
     }
 
 
