@@ -57,7 +57,7 @@ class UploadController extends \BaseController
             try {
                 return $this->read($inputFile, $fileExtension, $category);
             } catch (Exception $e) {
-                return View::make("home.error")->with('message', $e->getMessage());
+                return View::make("home.error")->with('message', 'submit: ' . $e->getMessage());
             }
         }
     }
@@ -95,6 +95,7 @@ class UploadController extends \BaseController
          */
         $objWorksheet = $objPHPExcel->getActiveSheet();
         $rows = $objWorksheet->toarray();
+
         /* Validate header */
         //dd($rows);
 
@@ -136,24 +137,23 @@ class UploadController extends \BaseController
         try {
             return $this->importData($objWorksheet, $categoryID, $itemColumns);
         } catch (Exception $e) {
-            throw new Exception($e->getMessage());
+            throw new Exception('read: ' . $e->getMessage());
         }
     }
 
+
     // Catherine here...
-    public function validateModel($row)
+    public function validateRows($excelSheet)
     {
-        $invalidRows = [];
-        $validRows = [];
-        $error_message = "";
-        if (!Item::isValid($row)) {
-            array_push($invalidRows, $row);
-            $error_message .= $row;
-        } else {
-            array_push($validRows, $row);
+        $itemNameExists = false;
+        $headers = $excelSheet->toarray()[0];
+        if ( ! is_array($excelSheet[0]) ) {
+            return 'First row excelSheet is not an array. ';
         }
-        return $error_message;
+        $position = array_search('item_name', $headers);
+        
     }
+
 
     public function writeTemplate()
     {
@@ -254,7 +254,7 @@ class UploadController extends \BaseController
                 }
             }
         } catch (Exception $e) {
-            return $e->getMessage();
+            return 'validateHeader: ' . $e->getMessage();
         }
         //return count($invalidHeaders);
 
@@ -270,6 +270,8 @@ class UploadController extends \BaseController
 
     public function importData($worksheet, $categoryID, $itemColumns)
     {
+        $headers = $worksheet->toarray()[0];
+
         /*
          *    Check referencial integrity on:
          *    1.  Catagory table : does not allow creation of new category if it doesn't exist.
@@ -279,38 +281,36 @@ class UploadController extends \BaseController
         $numOfRows = $worksheet->getHighestDataRow();
         $numOfColumns = $worksheet->getHighestDataColumn();
         $numOfColumnsIndex = PHPExcel_Cell::columnIndexFromString($numOfColumns);
+
         //echo '<p>' . $numOfRows . '</p>';
         //echo '<p>' . $numOfColumns . '</p>';
         //echo '<p>Column Index: ' . $numOfColumnsIndex . '</p>';
 
+        // initialize item
         // column 0 is 'A', 27 is 'AB'
         // row 1 is '1'
-        for ($row = 1; $row <= $numOfRows; $row++) {
+        for ($row = 2; $row <= $numOfRows; $row++) {
             $item = new Item();
             // initialize item
             // ignore 'item_name' column, so only go up to count()-1
             // this is so we can validate against model Item, w/c doesn't expect 'item_name'
-            $length = count($itemColumns);
-            for ($col = 0; $col < $length - 1; $col++) {
+            $length = count($headers);
+            for ($col = 0; $col < $length; $col++) {
                 $value = $worksheet->getCellByColumnAndRow($col, $row)->getValue();
-                $field = $itemColumns[$col];
+                $field = $headers[$col];
                 $item->$field = $value;
-                //echo '<p>' . $field . '</p>';
-                //echo '<p>' . $item->$field . '</p>';
+                echo '<p>' . $field . ': ' . $item->$field . '</p>';
             }
-            //return $item;
 
 
             // if kind do not exists, create a new kind
-            $item->item_name = $itemColumns[$length];
             try {
                 $this->addKind($item);
             } catch (Exception $e) {
-                array_add($badRows, $row, $e->getMessage());
+                array_add($badRows, $row, 'importData: ' . $e->getMessage());
             }
 
-
-            // invalid item, exit
+            // validate item against the validation rules of Item
             if (!$item->isValid()) {
                 array_add($badRows, $row->getRowIndex(), 'Validation failed.');
                 continue;
@@ -329,21 +329,22 @@ class UploadController extends \BaseController
      */
     public function addKind($item)
     {
-        $name = $item->item_name;
-        $kindID = DB::table('kinds')->where('name', $name)->first();
-
-        // kind does not exist, create a new one
-        if ($kindID == "") {
+        echo '<hr>';
+        $name = intval($item->item_name);
+        $result = Kind::where('name', '=', $name)->first();
+        if ($result) {
+            echo 'kind exist.';
+            return '';
+        } else {
             try {
-                DB::table('kinds')->insert(array('name' => $name, 'description' => ''));
+                $kind = new Kind;
+                $kind->name = $name;
+                $kind->save();
+                echo 'adding kind to db...';
             } catch (Exception $e) {
-                throw new Exception($e->getMessage());
+                throw new Exception('addKind: ' . $e->getMessage());
             }
         }
-        echo $name;
-        return '';
-        $kind = new Kind;
-        Kind::$kind->find($kindID);
     }
 
 
