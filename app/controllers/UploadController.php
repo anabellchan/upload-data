@@ -99,8 +99,9 @@ class UploadController extends \BaseController
         //dd($rows);
 
 
-        $itemColumns = Schema::getColumnListing('items');   //this gets array of all column headings for ITEMS
-        array_push($itemColumns, 'item_name');   //add item_name to required column - will be used for kind table
+        //$itemColumns = Schema::getColumnListing('items');   //this gets array of all column headings for ITEMS
+        //array_push($itemColumns, 'item_name');   //add item_name to required column - will be used for kind table
+        $itemColumns = $this->getClientItemHeaders();
         //return $itemColumns;
 
         $message = $this->validateHeader($rows[0], $itemColumns);
@@ -156,6 +157,8 @@ class UploadController extends \BaseController
 
     public function writeTemplate()
     {
+        $itemColumns = $this->getClientItemHeaders();
+
         error_reporting(E_ALL);
         ini_set('display_errors', TRUE);
         ini_set('display_startup_errors', TRUE);
@@ -165,50 +168,55 @@ class UploadController extends \BaseController
             die('This example should only be run from a Web Browser');
 
         /** Include PHPExcel */
-//        include '..\upload-data\app\models\PHPExcel.php';
+// include '..\upload-data\app\models\PHPExcel.php';
 
-// Create new PHPExcel object
+    // Create new PHPExcel object
         $objPHPExcel = new PHPExcel();
 
-// Set document properties
-        $objPHPExcel->getProperties()->setCreator("Maarten Balliauw")
-            ->setLastModifiedBy("Maarten Balliauw")
-            ->setTitle("Office 2007 XLSX Test Document")
-            ->setSubject("Office 2007 XLSX Test Document")
-            ->setDescription("Test document for Office 2007 XLSX, generated using PHP classes.")
+    // Set document properties
+        $objPHPExcel->getProperties()->setCreator("")
+            ->setLastModifiedBy("")
+            ->setTitle("Triumf Inventory")
+            ->setSubject("Triumf Inventory")
+            ->setDescription("Triumf Inventory Spreadsheet.")
             ->setKeywords("office 2007 openxml php")
-            ->setCategory("Test result file");
+            ->setCategory("Triumf Inventory");
 
 
-// Add some data
-        $objPHPExcel->setActiveSheetIndex(0)
-            ->setCellValue('A1', 'Hello')
-            ->setCellValue('B2', 'world!')
-            ->setCellValue('C1', 'Hello')
-            ->setCellValue('D2', 'world!');
+    // Add some data
+//        $objPHPExcel->setActiveSheetIndex(0)->setCellValue('A1', 'ENTER INVENTORY CATEGORY NAME:');
+//        $objPHPExcel->setActiveSheetIndex(0)->mergeCells('A1:H1');
 
-// Miscellaneous glyphs, UTF-8
-        $objPHPExcel->setActiveSheetIndex(0)
-            ->setCellValue('A4', 'Miscellaneous glyphs')
-            ->setCellValue('A5', 'éàèùâêîôûëïüÿäöüç')
-            ->setCellValue('A6', 'IT WORKS!!!');
+    // Miscellaneous glyphs, UTF-8
+        $letter = 'A';
+        for($i = 0; $i < count($itemColumns); $i++) {
+            $cell = $letter.'1';
 
-// Rename worksheet
-        $objPHPExcel->getActiveSheet()->setTitle('Simple');
+            $objPHPExcel->setActiveSheetIndex(0)->setCellValue($cell , $itemColumns[$i]);
+            $objPHPExcel->setActiveSheetIndex(0)->getColumnDimension($letter)->setAutoSize(true);
+            $letter++;
+        }
+
+    //set row cell styles
+        $headerCells = 'A1:' . $letter . "1";
+        $objPHPExcel->setActiveSheetIndex(0)->getStyle($headerCells)->getFont()->setBold(true);
+        $objPHPExcel->setActiveSheetIndex(0)->getRowDimension('1')->setRowHeight(20);
 
 
-// Set active sheet index to the first sheet, so Excel opens this as the first sheet
+        // Rename worksheet
+        $objPHPExcel->getActiveSheet()->setTitle('Triumf Inventory');
+
+    // Set active sheet index to the first sheet, so Excel opens this as the first sheet
         $objPHPExcel->setActiveSheetIndex(0);
 
-
-// Redirect output to a client’s web browser (Excel5)
+    // Redirect output to a client’s web browser (Excel5)
         header('Content-Type: application/vnd.ms-excel');
-        header('Content-Disposition: attachment;filename="01simple.xls"');
+        header('Content-Disposition: attachment;filename="Triumf_Inventory_Spreadsheet.xls"');
         header('Cache-Control: max-age=0');
-// If you're serving to IE 9, then the following may be needed
+    // If you're serving to IE 9, then the following may be needed
         header('Cache-Control: max-age=1');
 
-// If you're serving to IE over SSL, then the following may be needed
+    // If you're serving to IE over SSL, then the following may be needed
         header('Expires: Mon, 26 Jul 1997 05:00:00 GMT'); // Date in the past
         header('Last-Modified: ' . gmdate('D, d M Y H:i:s') . ' GMT'); // always modified
         header('Cache-Control: cache, must-revalidate'); // HTTP/1.1
@@ -216,7 +224,6 @@ class UploadController extends \BaseController
 
         $objWriter = PHPExcel_IOFactory::createWriter($objPHPExcel, 'Excel5');
         $objWriter->save('php://output');
-
     }
 
     public function validateHeader($row, $itemColumns)
@@ -337,6 +344,25 @@ class UploadController extends \BaseController
         return '';
         $kind = new Kind;
         Kind::$kind->find($kindID);
+    }
+
+
+    public function getClientItemHeaders()
+    {
+        $itemColumns = Schema::getColumnListing('items');   //this gets array of all column headings for ITEMS
+
+        $key = array_search('id', $itemColumns);
+        unset($itemColumns[$key]);
+
+        $key = array_search('kind_id', $itemColumns);
+        unset($itemColumns[$key]);
+
+        $key = array_search('category_id', $itemColumns);
+        unset($itemColumns[$key]);
+
+        array_unshift($itemColumns, "item_name");
+
+        return $itemColumns;
     }
 
 }
