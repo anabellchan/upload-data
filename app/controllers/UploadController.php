@@ -1,7 +1,8 @@
 <?php
 require_once('..\upload-data\app\models\TriumfRow.php');
 
-class UploadController extends \BaseController {
+class UploadController extends \BaseController
+{
 
     /*
      * Acceptable file extensions
@@ -12,20 +13,25 @@ class UploadController extends \BaseController {
      */
     const HEADER_INDEX = 0;
     public static $arrFields = [];
+
     public static $ACCEPTED_EXTENSIONS = array('xlsx' => 'Excel2007', 'csv' => 'CSV', 'xls' => 'CSV');
+
 //    public static $message = '';  // should have only one message variable
 
 
-    public function acceptedExtensions() {
+    public function acceptedExtensions()
+    {
         $accepted_extensions = array_keys(self::$ACCEPTED_EXTENSIONS);
-        return implode(', ' , $accepted_extensions);
+        return implode(', ', $accepted_extensions);
     }
 
-    public function isOfValidFileExtension($fileExtension) {
+    public function isOfValidFileExtension($fileExtension)
+    {
         return in_array($fileExtension, array_keys(self::$ACCEPTED_EXTENSIONS));
     }
 
-    public function submit() {
+    public function submit()
+    {
         /*
         // debug purposes
         */
@@ -45,10 +51,9 @@ class UploadController extends \BaseController {
         $fileExtension = strtolower(Input::file('file')->guessClientExtension());
 
         if (!self::isOfValidFileExtension($fileExtension)) {
-            $message =  "<b>$filename is invalid.  Only accepts the following file extensions: " . self::acceptedExtensions() . "</b>";
+            $message = "<b>$filename is invalid.  Only accepts the following file extensions: " . self::acceptedExtensions() . "</b>";
             return View::make("home.error")->with('message', $message);
-        }
-        else {
+        } else {
             try {
                 return $this->read($inputFile, $fileExtension, $category);
             } catch (Exception $e) {
@@ -57,7 +62,8 @@ class UploadController extends \BaseController {
         }
     }
 
-    public function read($inputFile, $fileExtension, $category) {
+    public function read($inputFile, $fileExtension, $category)
+    {
         //return $category;
         //return 'read action';
         error_reporting(E_ALL);
@@ -77,7 +83,7 @@ class UploadController extends \BaseController {
             $objReader->setReadDataOnly(true);
             $objPHPExcel = $objReader->load($inputFile);
         } catch (PHPExcel_Reader_Exception $e) {
-            throw new Exception('Error loading file: '.$e->getMessage());
+            throw new Exception('Error loading file: ' . $e->getMessage());
 //            die('Error loading file: '.$e->getMessage());
         }
 
@@ -88,59 +94,58 @@ class UploadController extends \BaseController {
          *   3. DB Insert
          */
         $objWorksheet = $objPHPExcel->getActiveSheet();
-        $rows =  $objWorksheet->toarray();
+        $rows = $objWorksheet->toarray();
         /* Validate header */
         //dd($rows);
 
 
         $itemColumns = Schema::getColumnListing('items');   //this gets array of all column headings for ITEMS
         array_push($itemColumns, 'item_name');   //add item_name to required column - will be used for kind table
-        return $itemColumns;
+        //return $itemColumns;
 
         $message = $this->validateHeader($rows[0], $itemColumns);
-//        $message = $this->validateHeader($objWorksheet->toarray()[HEADER_INDEX]);
 
-        if ($message) {
-            return $message;         // display list of incorrect header
-        }
-        return 'perfect - all headers valid';
+//        if ($message) {
+//            return $message;         // display list of incorrect header
+//        }
+//        return 'perfect - all headers valid';
 
         /* Validate against Item model's validation rules */
         /* Catherine here... */
-        $categoryID = DB::table('categories')->where('name', $category)->first();
-        if ( $categoryID == "" or $categoryID==null ) {
+        $categoryID = DB::table('categories')->where('name', $category)->first()->id;
+        if ($categoryID == "" or $categoryID == null) {
             throw new Exception('invalid category selected');
         }
 
-        $validRows = array();
-        $invalidRows = array();
-        for($x = 1; $x < count($rows); $x++) {
-            //return $rows[51];
-            //$message .= $this->validateModel($row);
-
-
-
-        }
-
-        if ($message) {
-            throw new Exception($message);         // display list of incorrect rows
-        }
+//        $validRows = array();
+//        $invalidRows = array();
+//        for($x = 1; $x < count($rows); $x++) {
+//            //return $rows[51];
+//            //$message .= $this->validateModel($row);
+//
+//
+//
+//        }
+//
+//        if ($message) {
+//            throw new Exception($message);         // display list of incorrect rows
+//        }
 
         /* Attempts to insert data to DB */
         try {
-            $message += $this->importData($objWorksheet, $categoryID);
-        }
-        catch (Exception $e) {
+            return $this->importData($objWorksheet, $categoryID, $itemColumns);
+        } catch (Exception $e) {
             throw new Exception($e->getMessage());
         }
     }
 
     // Catherine here...
-    public function validateModel($row) {
+    public function validateModel($row)
+    {
         $invalidRows = [];
         $validRows = [];
         $error_message = "";
-        if(! Item::isValid($row)){
+        if (!Item::isValid($row)) {
             array_push($invalidRows, $row);
             $error_message .= $row;
         } else {
@@ -149,7 +154,8 @@ class UploadController extends \BaseController {
         return $error_message;
     }
 
-    public function writeTemplate() {
+    public function writeTemplate()
+    {
         error_reporting(E_ALL);
         ini_set('display_errors', TRUE);
         ini_set('display_startup_errors', TRUE);
@@ -203,10 +209,10 @@ class UploadController extends \BaseController {
         header('Cache-Control: max-age=1');
 
 // If you're serving to IE over SSL, then the following may be needed
-        header ('Expires: Mon, 26 Jul 1997 05:00:00 GMT'); // Date in the past
-        header ('Last-Modified: '.gmdate('D, d M Y H:i:s').' GMT'); // always modified
-        header ('Cache-Control: cache, must-revalidate'); // HTTP/1.1
-        header ('Pragma: public'); // HTTP/1.0
+        header('Expires: Mon, 26 Jul 1997 05:00:00 GMT'); // Date in the past
+        header('Last-Modified: ' . gmdate('D, d M Y H:i:s') . ' GMT'); // always modified
+        header('Cache-Control: cache, must-revalidate'); // HTTP/1.1
+        header('Pragma: public'); // HTTP/1.0
 
         $objWriter = PHPExcel_IOFactory::createWriter($objPHPExcel, 'Excel5');
         $objWriter->save('php://output');
@@ -223,28 +229,29 @@ class UploadController extends \BaseController {
             $itemName = false;
             //go through top header row of excel data compare headers to ITEM columns
             $c = 0;
-            foreach($row as $columnHeader){
+            foreach ($row as $columnHeader) {
                 self::$arrFields[$c] = $columnHeader;
-                if($columnHeader == 'item_name') { $itemName = true; };
+                if ($columnHeader == 'item_name') {
+                    $itemName = true;
+                };
 
                 $match = false;
-                foreach($itemColumns as $iColumn){
-                    if($columnHeader == $iColumn){
+                foreach ($itemColumns as $iColumn) {
+                    if ($columnHeader == $iColumn) {
                         $match = true;
                         break;
                     }
                 }
-                if($match == false){
+                if ($match == false) {
                     array_push($invalidHeaders, $columnHeader);  //this adds the invalid column header to array
                 }
             }
-        }
-        catch(Exception $e) {
+        } catch (Exception $e) {
             return $e->getMessage();
         }
         //return count($invalidHeaders);
 
-        if(count($invalidHeaders) > 0 || $itemName == false){
+        if (count($invalidHeaders) > 0 || $itemName == false) {
             //if any of the excel headers are invalid return view with list of invalid headers and list of possible correct options
             return View::make("home.invalidheading")->with('allItems', array('invalidHeaders' => $invalidHeaders, 'validHeaders' => $itemColumns, 'itemName' => $itemName));
         }
@@ -254,71 +261,82 @@ class UploadController extends \BaseController {
     }
 
 
-
-
-
-
-
-
-    public function importData($worksheet, $categoryID) {
+    public function importData($worksheet, $categoryID, $itemColumns)
+    {
+        /*
+         *    Check referencial integrity on:
+         *    1.  Catagory table : does not allow creation of new category if it doesn't exist.
+         *    2.  Kind table : creates a new kind if it doesn't exist.
+         */
         $badRows = [];
+        $numOfRows = $worksheet->getHighestDataRow();
+        $numOfColumns = $worksheet->getHighestDataColumn();
+        $numOfColumnsIndex = PHPExcel_Cell::columnIndexFromString($numOfColumns);
+        //echo '<p>' . $numOfRows . '</p>';
+        //echo '<p>' . $numOfColumns . '</p>';
+        //echo '<p>Column Index: ' . $numOfColumnsIndex . '</p>';
 
-        foreach ($worksheet->getRowIterator() as $row) {
-            /*
-             *    Referencial integrity on:
-             *    1.  Catagory table : does not allow creation of new category if it doesn't exist.
-             *    2.  Type table : creates a new type if it doesn't exist.
-             */
-
-
-
-
-            $item = new Item($row);
+        // column 0 is 'A', 27 is 'AB'
+        // row 1 is '1'
+        for ($row = 1; $row <= $numOfRows; $row++) {
+            $item = new Item();
             // initialize item
-            for ($c=0; $c>count(self::$arrFields); $c++) {
-                $field = self::$arrFields[$c];
-                $item->$field = $row[$c];
+            // ignore 'item_name' column, so only go up to count()-1
+            // this is so we can validate against model Item, w/c doesn't expect 'item_name'
+            $length = count($itemColumns);
+            for ($col = 0; $col < $length - 1; $col++) {
+                $value = $worksheet->getCellByColumnAndRow($col, $row)->getValue();
+                $field = $itemColumns[$col];
+                $item->$field = $value;
+                //echo '<p>' . $field . '</p>';
+                //echo '<p>' . $item->$field . '</p>';
             }
+            //return $item;
+
+
+            // if kind do not exists, create a new kind
+            $item->item_name = $itemColumns[$length];
+            try {
+                $this->addKind($item);
+            } catch (Exception $e) {
+                array_add($badRows, $row, $e->getMessage());
+            }
+
+
             // invalid item, exit
             if (!$item->isValid()) {
                 array_add($badRows, $row->getRowIndex(), 'Validation failed.');
                 continue;
             }
-            // kind exist, save item
-            $kindID = DB::table('kinds')->where('id', $item->kind_id)->first();
-            if ( $kindID == "" or $categoryID==null ) {
-//                $tr = new TriumfRow($row);
 
-            }
-            else {
-                $item->save();
-            }
+            // finally, safely arrives here, save item!
+            $item->save();
 
-            // kind does not exist, create new kind
-//            else {
-//                try {
-//                    DB::table('kinds')->insert(
-//                        array('name' => , 'description' => $item->)
-//                    );
-//                } catch (Exception $e) {
-//                    array_add($badRows, $row->getRowIndex(), $e->getMessage());
-//                }
-
-            }
-        }
-    public function insertRow() {
-        try {
-            return '';
-        }
-        catch (Exception $e) {
-            throw new Exception($e->getMessage());
         }
     }
 
-    public function existInKind() {
+    /*
+     *  addKind
+     *    1. If kind do not exist, create a new one
+     *    2. If kind already exists, do nothing
+     */
+    public function addKind($item)
+    {
+        $name = $item->item_name;
+        $kindID = DB::table('kinds')->where('name', $name)->first();
+
+        // kind does not exist, create a new one
+        if ($kindID == "") {
+            try {
+                DB::table('kinds')->insert(array('name' => $name, 'description' => ''));
+            } catch (Exception $e) {
+                throw new Exception($e->getMessage());
+            }
+        }
+        echo $name;
         return '';
         $kind = new Kind;
-        Kind::$kind->find($item->getRow()->kind_id);
+        Kind::$kind->find($kindID);
     }
 
 }
