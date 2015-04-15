@@ -1,5 +1,6 @@
 <?php
-require_once('..\upload-data\app\models\TriumfRow.php');
+//require_once('..\upload-data\app\models\TriumfRow.php');
+
 
 class UploadController extends \BaseController
 {
@@ -67,8 +68,8 @@ class UploadController extends \BaseController
         error_reporting(E_ALL);
         ini_set('display_errors', TRUE);
         ini_set('display_startup_errors', TRUE);
-        include '..\upload-data\app\models\PHPExcel\IOFactory.php';
-
+        //include '..\upload-data\app\models\PHPExcel\IOFactory.php';   --SWITCH TO THIS INCLUDE IF RETURNING 'FAILED OPENING' ERROR
+        include '..\app\models\PHPExcel\IOFactory.php';
 
 
         /*
@@ -101,28 +102,30 @@ class UploadController extends \BaseController
         *  Validate header
         */
         echo "<p>Validating header.</p>";
-        $itemColumns = Schema::getColumnListing('items');   //this gets array of all column headings for ITEMS
-        array_push($itemColumns, 'item_name');   //add item_name to required column - will be used for kind table
-        $itemColumns = $this->getClientItemHeaders();
 
+        $itemColumns = $this->getClientItemHeaders();
         //return $itemColumns;
 
         $message = $this->validateHeader($rows[0], $itemColumns);
-
-//        if ($message) {
-//            return $message;         // display list of incorrect header
-//        }
+        if ($message) {
+            return $message;         // display list of incorrect header
+        }
 //        return 'perfect - all headers valid';
+
 
         /*
         *  Validate Category
         */
-        try {
-            $this->validateCategory($category);
-        } catch (Exception $e) {
-            throw new Exception('read validate category: ' . $e->getMessage());
+//        try {
+//            $this->validateCategory($category);
+//        } catch (Exception $e) {
+//            throw new Exception('read validate category: ' . $e->getMessage());
+//        }
+        $message = $this->validateCategory($category);
+        if ($message) {
+            return $message;         // display list of incorrect header
         }
-
+        //return 'category is valid';
 
         /*
         *  Attempts to insert data to DB
@@ -143,8 +146,10 @@ class UploadController extends \BaseController
         echo "<p>Validating item's category.</p>";
         self::$categoryID = DB::table('categories')->where('name', $category)->first()->id;
         if (self::$categoryID == "" or self::$categoryID == null) {
+            //return 'invalid category!';
             throw new Exception('invalid category selected');
-        } else {
+        }
+        else {
             echo "Category validated.";
         }
     }
