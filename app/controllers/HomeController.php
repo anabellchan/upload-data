@@ -4,7 +4,7 @@ class HomeController extends BaseController {
 
     /*
     |--------------------------------------------------------------------------
-    | Default Home Controller
+    | Default home Controller
     |--------------------------------------------------------------------------
     |
     | You may wish to use controllers instead of, or in addition to, Closure

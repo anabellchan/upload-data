@@ -69,7 +69,7 @@ class UploadController extends \BaseController
         ini_set('display_errors', TRUE);
         ini_set('display_startup_errors', TRUE);
         //include '..\upload-data\app\models\PHPExcel\IOFactory.php';   --SWITCH TO THIS INCLUDE IF RETURNING 'FAILED OPENING' ERROR
-        include '..\app\models\PHPExcel\IOFactory.php';
+        //include '..\app\models\PHPExcel\IOFactory.php';
 
 
         /*
