@@ -58,6 +58,7 @@ class UploadController extends \BaseController
                 return View::make("home.error")->with('message', 'submit: ' . $e->getMessage());
             }
         }
+        return "Success";
     }
 
     public function read($inputFile, $fileExtension, $category)
@@ -68,9 +69,6 @@ class UploadController extends \BaseController
         error_reporting(E_ALL);
         ini_set('display_errors', TRUE);
         ini_set('display_startup_errors', TRUE);
-        //include '..\upload-data\app\models\PHPExcel\IOFactory.php';   --SWITCH TO THIS INCLUDE IF RETURNING 'FAILED OPENING' ERROR
-        include '..\app\models\PHPExcel\IOFactory.php';
-
 
         /*
          * Load the file
@@ -94,6 +92,7 @@ class UploadController extends \BaseController
             echo "<p>Spreadsheet loading.</p>";
             $objWorksheet = $objPHPExcel->getActiveSheet();
             $rows = $objWorksheet->toarray();
+            $rows[0] = array_map('strtolower', $rows[0]);
         } catch (Exception $e) {
             throw new Exception('Error loading worksheet: ' . $e->getMessage());
         }
@@ -116,19 +115,22 @@ class UploadController extends \BaseController
         /*
         *  Validate Category
         */
-//        try {
-//            $this->validateCategory($category);
-//        } catch (Exception $e) {
-//            throw new Exception('read validate category: ' . $e->getMessage());
-//        }
-        $message = $this->validateCategory($category);
+        try {
+            $this->validateCategory($category);
+        } catch (Exception $e) {
+            throw new Exception('read validate category: ' . $e->getMessage());
+        }
+
+        /*
+         *  Validate Rows
+         */
+        $message =  $this->validateRows($objWorksheet);
         if ($message) {
             return $message;         // display list of incorrect header
         }
-        //return 'category is valid';
 
         /*
-        *  Attempts to insert data to DB
+        *  Insert data to DB
         */
         try {
             echo "<p>Importing data.</p>";
@@ -149,9 +151,7 @@ class UploadController extends \BaseController
             //return 'invalid category!';
             throw new Exception('invalid category selected');
         }
-        else {
-            echo "Category validated.";
-        }
+        echo "Category validated.";
     }
 
     /*
@@ -161,23 +161,30 @@ class UploadController extends \BaseController
      */
     public function validateRows($excelSheet)
     {
-        echo "<p>Validate model.</p>";
+        echo "<p>Validate item_name column.</p>";
         $invalidRows = [];
         $itemNameExists = false;
         $headers = $excelSheet->toarray()[0];
-        if ( ! is_array($excelSheet[0]) ) {
-            return 'First row excelSheet is not an array. ';
-        }
+//        if ( ! is_array($excelSheet[0]) ) {
+//            return 'First row excelSheet is not an array. ';
+//        }
         $position = array_search('item_name', $headers);
         $numOfRows = $excelSheet->getHighestDataRow();
 
-        for ($i = 0; $i < $numOfRows; $i++){
+        for ($i = 2; $i <= $numOfRows; $i++){  // data starts in row 1
             $value = $excelSheet->getCellByColumnAndRow($position, $i)->getValue();
+
             if ($value == null || $value == ""){
-                array_push($invalidRows, $excelSheet[$i]);
+                $rowNum = $i;
+                $r = "Row: " . $rowNum;
+                array_push($invalidRows, $r);
             }
         }
-        return $invalidRows;
+
+        if (count($invalidRows) > 0) {
+            return View::make("home.invalidrows")->with('allItems',
+                array('validation' => 'Please specify "item_name" on the following:', 'invalidRows' => $invalidRows));
+        }
     }
 
 
@@ -219,13 +226,7 @@ class UploadController extends \BaseController
 
     // Miscellaneous glyphs, UTF-8
         $letter = 'A';
-        for($i = 0; $i < count($itemColumns); $i++) {
-            $cell = $letter.'1';
-
-            $objPHPExcel->setActiveSheetIndex(0)->setCellValue($cell , $itemColumns[$i]);
-            $objPHPExcel->setActiveSheetIndex(0)->getColumnDimension($letter)->setAutoSize(true);
-            $letter++;
-        }
+//        for anabell
 
     //set row cell styles
         $headerCells = 'A1:' . $letter . "1";
@@ -258,7 +259,10 @@ class UploadController extends \BaseController
 
     /*
      *   validateHeader
-     *   - loads View to show invalid headers
+     *   - on success, exit
+     *   - on errors, loads View to show invalid headers
+     *   - $itemColumns - list of valid column names
+     *   - $row - list of input column names
      */
     public function validateHeader($row, $itemColumns)
     {
@@ -266,11 +270,11 @@ class UploadController extends \BaseController
 
         try {
 
-            //return $itemColumns;
             $itemName = false;
             //go through top header row of excel data compare headers to ITEM columns
             $c = 0;
             foreach ($row as $columnHeader) {
+//                $columnHeader = strtolower($columnHeader);
                 self::$arrFields[$c] = $columnHeader;
                 if ($columnHeader == 'item_name') {
                     $itemName = true;
@@ -278,6 +282,7 @@ class UploadController extends \BaseController
 
                 $match = false;
                 foreach ($itemColumns as $iColumn) {
+//                    $iColumn = strtolower($iColumn);
                     if ($columnHeader == $iColumn) {
                         $match = true;
                         break;
@@ -307,10 +312,14 @@ class UploadController extends \BaseController
      *   - inserts data to DB
      *   - validates type name
      *   - throws error for invalid DB transactions
+     *   - $worksheet - data to be imported
+     *   - $itemColumns - list of valid column names
      */
     public function importData($worksheet, $itemColumns)
     {
+        // normalize input column names
         $headers = $worksheet->toarray()[0];
+        $headers = array_map('strtolower', $headers);
         /*
          *    Check referencial integrity on:
          *    1.  Catagory table : does not allow creation of new category if it doesn't exist.
@@ -318,26 +327,20 @@ class UploadController extends \BaseController
          */
         $badRows = [];
         $numOfRows = $worksheet->getHighestDataRow();
-        $numOfColumns = $worksheet->getHighestDataColumn();
-        $numOfColumnsIndex = PHPExcel_Cell::columnIndexFromString($numOfColumns);
 
-        //echo '<p>' . $numOfRows . '</p>';
-        //echo '<p>' . $numOfColumns . '</p>';
-        //echo '<p>Column Index: ' . $numOfColumnsIndex . '</p>';
 
         // initialize item
         // column 0 is 'A', 27 is 'AB'
-        // row 1 is '1'
+        // row 2 - start of data, row 1 is column names
         for ($row = 2; $row <= $numOfRows; $row++) {
             $item = new Item();
             $item->category_id = intval(self::$categoryID);
             $length = count($headers);
             for ($col = 0; $col < $length; $col++) {
                 $value = $worksheet->getCellByColumnAndRow($col, $row)->getValue();
+//                echo "here: " . $row . $col . '- ' . $value;
                 $field = $headers[$col];
                 $item->$field = $value;
-
-                //echo '<hr><p>' . $field . ': ' . $item->$field . '</p>';
             }
 
 
@@ -348,35 +351,34 @@ class UploadController extends \BaseController
                 echo "<p>Validating item's kind.</p>";
                 $this->addKind($item);
             } catch (Exception $e) {
-                array_add($badRows, $row, 'importData: ' . $e->getMessage());
+                throw new Exception('Type validation failed - Row: ' . $row);
             }
 
             /*
              *   Validate against model - validate item against the validation rules of Item
              */
-//            echo "<p>Validating against model's validation rule.</p>";
-//            $item->type_id = '';
-//            $item->category_id = '';
-//            if (!$item->isValid()) {
-//                array_add($badRows, $row, $item->messages);
-////                return $badRows;
-//            }
-//            if ($badRows != []) {
-//
-//            }
-//            var_dump($item);
+            echo "<p>Validating against model's validation rule.</p>";
+            if (!$item->isValid()) {
+                array_push($badRows, 'Model failed - Row: ' . $row);
+            }
 
             /*
              *   Insert Item to DB - save item!
              */
             try {
+                unset($item->item_name);
                 $item->save();
-                echo('<p>Item saved.</p>');
             } catch (Exception $e) {
                 throw new Exception('read - insert Item: ' . $e->getMessage());
             }
-
         }
+//        echo count($badRows);
+        if (count($badRows) > 0) {
+            return View::make("home.invalidrows")->with('allItems', array('invalidRows' => $badRows, 'validation' => 'Model validation failed: '));
+        }
+
+        return View::make("home.invalidrows")->with('allItems', array('invalidRows' => $badRows, 'validation' => 'Success'));
+
     }
 
     /*
@@ -387,7 +389,6 @@ class UploadController extends \BaseController
     public function addKind($item)
     {
         $name = $item->item_name;
-        echo "<h1>$name</h1>";
         $result = Kind::where('name', '=', $name)->first();
         if ($result) {
             echo "<p>Kind exists.</p>";
@@ -403,11 +404,8 @@ class UploadController extends \BaseController
             }
             $result = Kind::where('name', '=', $name)->first();
             $item->kind_id = $result->id;
-
         }
         unset($item->item_name);
-        //var_dump($item);
-
     }
 
     /*
