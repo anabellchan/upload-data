@@ -9,12 +9,12 @@
 
 @section('maincontent')
 	<div>
-        <h1>Upload Data</h1>
+        <h1>Import Data</h1>
         <!-- upload image -->
         {{ HTML::image('upload.png', 'Upload an Excel spreadsheet to database.') }}
         <br/>
         <br/>
-        {{ Form::open(['url'=>'upload/file','files'=>true]) }}
+        {{ Form::open(['url'=>'import/file','files'=>true]) }}
         {{ Form::label('categories','Select Category for Uploaded Items',['id'=>'','class'=>'']) }}
         <!--{{ Form::select('categories', array('L' => 'Large', 'S' => 'Small')) }}-->
         <select id="categories" name="categories">
@@ -41,6 +41,7 @@
 	</div>
     <div>
         <br>
-        <a href="{{ URL::to('upload/writeTemplate') }}">Download Inventory Spreadsheet Template</a>
+        <a href="{{ URL::to('/') }}">Back</a>
     </div>
+
 @stop

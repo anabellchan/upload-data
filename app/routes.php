@@ -10,15 +10,25 @@
 | and give it the Closure to execute when that URI is requested.
 |
 */
-Route::get('upload/writeTemplate', 'UploadController@writeTemplate');
-//Route::any('upload/read', 'UploadController@read');
-
 //Route::get('phpinfo', function()
 //{
 //    phpinfo();
 //});
 
 //Route::resource('upload', "HomeController@showWelcome");
-Route::get('/', 'HomeController@index');
-Route::resource('upload', 'UploadController');
-Route::any('upload/file', 'UploadController@submit');
+//Route::get('/', 'HomeController@index');
+Route::get('/', function() {
+    return View::make('Home.main');
+});
+Route::resource('upload', 'HomeController');
+Route::any('import/file', 'HomeController@submit');
+
+Route::get('import', function(){
+    $categories = DB::table('categories')->orderBy('name')->lists('name');
+    return View::make('Home.import')->with('categories', $categories);
+});
+
+Route::get('export', function(){
+    return View::make('Home.export');
+});
+Route::get('template', 'HomeController@writeTemplate');
