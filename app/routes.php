@@ -20,7 +20,7 @@
 Route::get('/', function() {
     return View::make('Home.main');
 });
-Route::resource('upload', 'HomeController');
+//Route::resource('upload', 'HomeController');
 Route::any('import/file', 'HomeController@submit');
 
 Route::get('import', function(){
@@ -28,7 +28,11 @@ Route::get('import', function(){
     return View::make('Home.import')->with('categories', $categories);
 });
 
-Route::get('export', function(){
-    return View::make('Home.export');
+Route::get('export', function() {
+    $categories = DB::table('categories')->orderBy('name')->lists('name');
+    return View::make('Home.export')->with('categories', $categories);
 });
+
+Route::post('export/category', 'HomeController@exportCategory');
+
 Route::get('template', 'HomeController@writeTemplate');
