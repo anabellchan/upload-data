@@ -184,30 +184,7 @@ class HomeController extends \BaseController
 
 
     public function exportCategory() {
-        $category = Input::get('categories');
-
-        $categoryID = DB::table('categories')->where('name', $category)->first()->id;
-        $items = DB::table('items')->where('category_id', $categoryID)->get();
-
-        // save kind IDs
-        $kinds = [];
-        foreach($items as $item) {
-            $items[$item->kind_id] = '';
-        }
-        // save kind names
-        foreach ($kinds as $key => $value) {
-            $kinds[$key] = DB::table('kinds')->where('id', $key)->first()->name;
-        }
-
-        // change kind_id to kind's name
-        foreach($items as $item) {
-
-        }
-
-
-
-        $itemColumns = $this->getClientItemHeaders();
-
+        // Initialization
         error_reporting(E_ALL);
         ini_set('display_errors', TRUE);
         ini_set('display_startup_errors', TRUE);
@@ -216,10 +193,34 @@ class HomeController extends \BaseController
         if (PHP_SAPI == 'cli')
             die('This example should only be run from a Web Browser');
 
-        /** Include PHPExcel */
-// include '..\upload-data\app\models\PHPExcel.php';
+        // Get items by category
+        $category = Input::get('categories');
+        $categoryID = DB::table('categories')->where('name', $category)->first()->id;
+        $items = DB::table('items')->where('category_id', $categoryID)->get();
 
-        // Create new PHPExcel object
+        // save kind IDs
+        $kinds = [];
+        foreach($items as $item) {
+            $kinds[$item->kind_id] = '';
+        }
+
+        // save kind names
+        foreach ($kinds as $key => $value) {
+            $kinds[$key] = DB::table('kinds')->where('id', $key)->first()->name;
+        }
+
+        // convert objects to array
+        $matrix = [];
+        $row = [];
+        $columns = Schema::getColumnListing('items');
+        foreach($items as $item) {
+            foreach($columns as $col) {
+                array_push($row, $item->$col);
+            }
+            array_push($matrix, $row);
+            $row = [];
+        }
+
         $objPHPExcel = new PHPExcel();
 
         // Set document properties
@@ -232,13 +233,8 @@ class HomeController extends \BaseController
             ->setCategory("Triumf Inventory");
 
 
-        // Add some data
-//        $objPHPExcel->setActiveSheetIndex(0)->setCellValue('A1', 'ENTER INVENTORY CATEGORY NAME:');
-//        $objPHPExcel->setActiveSheetIndex(0)->mergeCells('A1:H1');
-
         // Miscellaneous glyphs, UTF-8
         $letter = 'A';
-//        for anabell
 
         //set row cell styles
         $headerCells = 'A1:' . $letter . "1";
@@ -250,7 +246,13 @@ class HomeController extends \BaseController
         $objPHPExcel->getActiveSheet()->setTitle($category);
 
         // Set active sheet index to the first sheet, so Excel opens this as the first sheet
-        $objPHPExcel->setActiveSheetIndex(0);
+        $worksheet = $objPHPExcel->setActiveSheetIndex(0);
+        $arrColumns = [];
+        array_push($arrColumns, $columns);
+
+        $worksheet->fromArray($arrColumns, NULL, 'A1');
+        $worksheet->fromArray($matrix, NULL, 'A2');
+//        return $worksheet->getCellByColumnAndRow('A3');
 
         // Redirect output to a client’s web browser (Excel5)
         $filename = "Triumf_" . $category . "_Inventory.xls";
@@ -270,9 +272,7 @@ class HomeController extends \BaseController
         $objWriter->save('php://output');
     }
 
-
-     /*
-
+    /*
       *  writeTemplate
       *  - creates a template file
       */
@@ -318,7 +318,6 @@ class HomeController extends \BaseController
             $letter++;
         }
 
-
         //set row cell styles
         $headerCells = 'A1:' . $letter . "1";
         $objPHPExcel->setActiveSheetIndex(0)->getStyle($headerCells)->getFont()->setBold(true);
@@ -348,13 +347,13 @@ class HomeController extends \BaseController
         $objWriter->save('php://output');
     }
 
-/*
- *   validateHeader
- *   - on success, exit
- *   - on errors, loads View to show invalid headers
- *   - $itemColumns - list of valid column names
- *   - $row - list of input column names
- */
+    /*
+     *   validateHeader
+     *   - on success, exit
+     *   - on errors, loads View to show invalid headers
+     *   - $itemColumns - list of valid column names
+     *   - $row - list of input column names
+     */
     public function validateHeader($row, $itemColumns)
     {
         $invalidHeaders = array();   //if excel column header doesn't match ITEM column - push to this array
