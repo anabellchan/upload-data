@@ -270,10 +270,12 @@ class HomeController extends \BaseController
         $objWriter->save('php://output');
     }
 
-    /*
-     *  writeTemplate
-     *  - creates a template file
-     */
+
+     /*
+
+      *  writeTemplate
+      *  - creates a template file
+      */
     public function writeTemplate()
     {
         $itemColumns = $this->getClientItemHeaders();
@@ -287,12 +289,12 @@ class HomeController extends \BaseController
             die('This example should only be run from a Web Browser');
 
         /** Include PHPExcel */
-// include '..\upload-data\app\models\PHPExcel.php';
+        // include '..\upload-data\app\models\PHPExcel.php';
 
-    // Create new PHPExcel object
+        // Create new PHPExcel object
         $objPHPExcel = new PHPExcel();
 
-    // Set document properties
+        // Set document properties
         $objPHPExcel->getProperties()->setCreator("")
             ->setLastModifiedBy("")
             ->setTitle("Triumf Inventory")
@@ -302,15 +304,22 @@ class HomeController extends \BaseController
             ->setCategory("Triumf Inventory");
 
 
-    // Add some data
-//        $objPHPExcel->setActiveSheetIndex(0)->setCellValue('A1', 'ENTER INVENTORY CATEGORY NAME:');
-//        $objPHPExcel->setActiveSheetIndex(0)->mergeCells('A1:H1');
+        // Add some data
+        //        $objPHPExcel->setActiveSheetIndex(0)->setCellValue('A1', 'ENTER INVENTORY CATEGORY NAME:');
+        //        $objPHPExcel->setActiveSheetIndex(0)->mergeCells('A1:H1');
 
-    // Miscellaneous glyphs, UTF-8
+        // Miscellaneous glyphs, UTF-8
         $letter = 'A';
-//        for anabell
+        for($i = 0; $i < count($itemColumns); $i++) {
+            $cell = $letter.'1';
 
-    //set row cell styles
+            $objPHPExcel->setActiveSheetIndex(0)->setCellValue($cell , $itemColumns[$i]);
+            $objPHPExcel->setActiveSheetIndex(0)->getColumnDimension($letter)->setAutoSize(true);
+            $letter++;
+        }
+
+
+        //set row cell styles
         $headerCells = 'A1:' . $letter . "1";
         $objPHPExcel->setActiveSheetIndex(0)->getStyle($headerCells)->getFont()->setBold(true);
         $objPHPExcel->setActiveSheetIndex(0)->getRowDimension('1')->setRowHeight(20);
@@ -319,17 +328,17 @@ class HomeController extends \BaseController
         // Rename worksheet
         $objPHPExcel->getActiveSheet()->setTitle('Triumf Inventory');
 
-    // Set active sheet index to the first sheet, so Excel opens this as the first sheet
+        // Set active sheet index to the first sheet, so Excel opens this as the first sheet
         $objPHPExcel->setActiveSheetIndex(0);
 
-    // Redirect output to a client’s web browser (Excel5)
+        // Redirect output to a client’s web browser (Excel5)
         header('Content-Type: application/vnd.ms-excel');
         header('Content-Disposition: attachment;filename="Triumf_Inventory_Spreadsheet.xls"');
         header('Cache-Control: max-age=0');
-    // If you're serving to IE 9, then the following may be needed
+        // If you're serving to IE 9, then the following may be needed
         header('Cache-Control: max-age=1');
 
-    // If you're serving to IE over SSL, then the following may be needed
+        // If you're serving to IE over SSL, then the following may be needed
         header('Expires: Mon, 26 Jul 1997 05:00:00 GMT'); // Date in the past
         header('Last-Modified: ' . gmdate('D, d M Y H:i:s') . ' GMT'); // always modified
         header('Cache-Control: cache, must-revalidate'); // HTTP/1.1
@@ -339,13 +348,13 @@ class HomeController extends \BaseController
         $objWriter->save('php://output');
     }
 
-    /*
-     *   validateHeader
-     *   - on success, exit
-     *   - on errors, loads View to show invalid headers
-     *   - $itemColumns - list of valid column names
-     *   - $row - list of input column names
-     */
+/*
+ *   validateHeader
+ *   - on success, exit
+ *   - on errors, loads View to show invalid headers
+ *   - $itemColumns - list of valid column names
+ *   - $row - list of input column names
+ */
     public function validateHeader($row, $itemColumns)
     {
         $invalidHeaders = array();   //if excel column header doesn't match ITEM column - push to this array
