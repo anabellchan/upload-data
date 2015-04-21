@@ -37,6 +37,13 @@ class HomeController extends \BaseController
 
         echo "<h1>Filename: $filename</h1>";
         echo "<hr>";
+//        define('ROOTPATH', __DIR__);
+//        echo ROOTPATH;
+//        $myfile = fopen("/home/bcitinv/public_html/app/views/Home/test.txt", "r") or die("Unable to open file!");
+////        //$myfile = fopen("../upload-data/app/views/Home/test.txt", "r") or die("Unable to open file!");
+//        echo fgets($myfile);
+//        fclose($myfile);
+//        return;
 
 
         // validate file
@@ -44,13 +51,14 @@ class HomeController extends \BaseController
 
         if (!self::isOfValidFileExtension($fileExtension)) {
             $message = "<p>$filename is invalid.  Only accepts the following file extensions: " . self::acceptedExtensions() . "</p>";
-            return View::make("home.error")->with('message', $message);
+            return View::make("index.php/home/error")->with('message', $message);
         } else {
             echo "<p>File extension valid.</p>";
             try {
                 return $this->read($inputFile, $fileExtension, $category);
             } catch (Exception $e) {
-                return View::make("home.error")->with('message', 'submit: ' . $e->getMessage());
+                //return $e->getMessage();
+                return View::make("index.php/home/error")->with('message', 'submit: ' . $e->getMessage());
             }
         }
         return "Success";
@@ -178,7 +186,9 @@ class HomeController extends \BaseController
 
         if (count($invalidRows) > 0) {
             return View::make("home.invalidrows")->with('allItems',
-                array('validation' => 'Please specify "item_name" on the following:', 'invalidRows' => $invalidRows));
+                array('title' => 'Errors found.',
+                    'validation' => 'Please specify "item_name" on the following:',
+                    'invalidRows' => $invalidRows));
         }
     }
 
@@ -215,6 +225,10 @@ class HomeController extends \BaseController
         $columns = Schema::getColumnListing('items');
         foreach($items as $item) {
             foreach($columns as $col) {
+                if ($col=='kind_id') {
+                    $index =$item->$col;
+                    $item->$col = $kinds[$index];
+                }
                 array_push($row, $item->$col);
             }
             array_push($matrix, $row);
@@ -233,22 +247,34 @@ class HomeController extends \BaseController
             ->setCategory("Triumf Inventory");
 
 
+//        // Miscellaneous glyphs, UTF-8
+//        $letter = 'A';
+//
+//        //set row cell styles
+//        $headerCells = 'A1:' . $letter . "1";
+//        $objPHPExcel->setActiveSheetIndex(0)->getStyle($headerCells)->getFont()->setBold(true);
+//        $objPHPExcel->setActiveSheetIndex(0)->getRowDimension('1')->setRowHeight(20);
+
         // Miscellaneous glyphs, UTF-8
         $letter = 'A';
+        for($i = 0; $i < count($columns); $i++) {
+            $cell = $letter.'1';
 
-        //set row cell styles
-        $headerCells = 'A1:' . $letter . "1";
-        $objPHPExcel->setActiveSheetIndex(0)->getStyle($headerCells)->getFont()->setBold(true);
-        $objPHPExcel->setActiveSheetIndex(0)->getRowDimension('1')->setRowHeight(20);
-
+            $objPHPExcel->setActiveSheetIndex(0)->setCellValue($cell , $columns[$i]);
+            $objPHPExcel->setActiveSheetIndex(0)->getColumnDimension($letter)->setAutoSize(true);
+            $letter++;
+        }
 
         // Rename worksheet
         $objPHPExcel->getActiveSheet()->setTitle($category);
 
         // Set active sheet index to the first sheet, so Excel opens this as the first sheet
         $worksheet = $objPHPExcel->setActiveSheetIndex(0);
+        // convert data to array that ExcelReader can use
         $arrColumns = [];
         array_push($arrColumns, $columns);
+        $pos = array_search('kind_id', $arrColumns[0]);
+        $arrColumns[0][$pos] = 'item_name';
 
         $worksheet->fromArray($arrColumns, NULL, 'A1');
         $worksheet->fromArray($matrix, NULL, 'A2');
@@ -303,10 +329,6 @@ class HomeController extends \BaseController
             ->setKeywords("office 2007 openxml php")
             ->setCategory("Triumf Inventory");
 
-
-        // Add some data
-        //        $objPHPExcel->setActiveSheetIndex(0)->setCellValue('A1', 'ENTER INVENTORY CATEGORY NAME:');
-        //        $objPHPExcel->setActiveSheetIndex(0)->mergeCells('A1:H1');
 
         // Miscellaneous glyphs, UTF-8
         $letter = 'A';
@@ -464,10 +486,16 @@ class HomeController extends \BaseController
         }
 //        echo count($badRows);
         if (count($badRows) > 0) {
-            return View::make("home.invalidrows")->with('allItems', array('invalidRows' => $badRows, 'validation' => 'Model validation failed: '));
+            return View::make("home.invalidrows")->with('allItems',
+                array('title' => 'Errors found.',
+                    'invalidRows' => $badRows,
+                    'validation' => 'Model validation failed: '));
         }
 
-        return View::make("home.invalidrows")->with('allItems', array('invalidRows' => $badRows, 'validation' => 'Success'));
+        return View::make("home.invalidrows")->with('allItems',
+            array('title' => 'Import successful.',
+                'invalidRows' => $badRows,
+                'validation' => 'Success'));
 
     }
 
