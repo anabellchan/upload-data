@@ -23,4 +23,18 @@
         <br>
         <a href="{{ URL::to('template') }}">Download Inventory Spreadsheet Template</a>
     </div>
+	
+	
+	
+	<div>
+	<br>
+	token test - url token is {{$alltokens['urltoken']}}
+	@forelse($alltokens['tokens'] as $t)
+		<li>{{$t}}</li>
+	@empty
+		<li>no tokens found</li>
+	@endforelse
+		</div>
+	
+	
 @stop
