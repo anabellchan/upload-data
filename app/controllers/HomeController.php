@@ -3,7 +3,7 @@
 
 class HomeController extends \BaseController
 {
-
+	
     /*
      * Acceptable file extensions
      *
@@ -28,6 +28,9 @@ class HomeController extends \BaseController
 
     public function submit()
     {
+		if(Session::get('logged_in') != 'true'){
+			return Redirect::to('https://daq03.triumf.ca/daqinv/frontend/import');
+		}
         /*
         // debug purposes
         */
@@ -193,6 +196,10 @@ class HomeController extends \BaseController
 
     public function exportCategory()
     {
+		if(Session::get('logged_in') != 'true'){
+			return Redirect::to('https://daq03.triumf.ca/daqinv/frontend/import');
+		}
+	
         // Initialization
         error_reporting(E_ALL);
         ini_set('display_errors', TRUE);
@@ -287,6 +294,10 @@ class HomeController extends \BaseController
       */
     public function writeTemplate()
     {
+		if(Session::get('logged_in') != 'true'){
+			return Redirect::to('https://daq03.triumf.ca/daqinv/frontend/import');
+		}
+	
         $itemColumns = $this->getClientItemHeaders();
 
         error_reporting(E_ALL);
@@ -528,6 +539,10 @@ class HomeController extends \BaseController
 
     public function import()
     {
+		if(Session::get('logged_in') != 'true'){
+			return Redirect::to('https://daq03.triumf.ca/daqinv/frontend/import');
+		}
+	
         $selectionOfCategories = "<select id=\"categories\" name=\"categories\">";
         $categories = DB::table('categories')->where('parent_id', '=', 1)->get();
         foreach ($categories as $category1) {
@@ -558,3 +573,4 @@ class HomeController extends \BaseController
 
 
 }
+
