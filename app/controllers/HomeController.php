@@ -44,13 +44,13 @@ class HomeController extends \BaseController
 
         if (!self::isOfValidFileExtension($fileExtension)) {
             $message = "<p>$filename is invalid.  Only accepts the following file extensions: " . self::acceptedExtensions() . "</p>";
-            return View::make("home.error")->with('message', $message);
+            return View::make("Home.error")->with('message', $message);
         } else {
             echo "<p>File extension valid.</p>";
             try {
                 return $this->read($inputFile, $fileExtension, $category);
             } catch (Exception $e) {
-                return View::make("home.error")->with('message', 'submit: ' . $e->getMessage());
+                return View::make("Home.error")->with('message', 'submit: ' . $e->getMessage());
             }
         }
         return "Success";
@@ -97,6 +97,12 @@ class HomeController extends \BaseController
         */
         echo "<p>Validating header.</p>";
 
+//        $m = array('invalidHeaders' => array(1,2,3), 'validHeaders' => array(4,5,6), 'itemName' => "itemName");
+//        return View::make("home.invalidheading")->with('allItems', $m);
+//        return View::make("Home.invalidheading")->with('allItems', $m);
+//        $m = "Hello";
+//        return View::make("Home.error")->with('m', $m);
+
         $itemColumns = $this->getClientItemHeaders();
         //return $itemColumns;
 
@@ -113,13 +119,13 @@ class HomeController extends \BaseController
         try {
             $this->validateCategory($category);
         } catch (Exception $e) {
-            throw new Exception('read validate category: ' . $e->getMessage());
+            throw new Exception('read validate category: ' . $e);
         }
 
         /*
          *  Validate Rows
          */
-        $message =  $this->validateRows($objWorksheet);
+        $message = $this->validateRows($objWorksheet);
         if ($message) {
             return $message;         // display list of incorrect header
         }
@@ -139,8 +145,10 @@ class HomeController extends \BaseController
      *  validateCategory
      *  throws: invalid category error
      */
-    public function validateCategory($category) {
+    public function validateCategory($category)
+    {
         echo "<p>Validating item's category.</p>";
+        var_dump($category);
         self::$categoryID = DB::table('categories')->where('name', $category)->first()->id;
         if (self::$categoryID == "" or self::$categoryID == null) {
             //return 'invalid category!';
@@ -166,10 +174,10 @@ class HomeController extends \BaseController
         $position = array_search('item_name', $headers);
         $numOfRows = $excelSheet->getHighestDataRow();
 
-        for ($i = 2; $i <= $numOfRows; $i++){  // data starts in row 1
+        for ($i = 2; $i <= $numOfRows; $i++) {  // data starts in row 1
             $value = $excelSheet->getCellByColumnAndRow($position, $i)->getValue();
 
-            if ($value == null || $value == ""){
+            if ($value == null || $value == "") {
                 $rowNum = $i;
                 $r = "Row: " . $rowNum;
                 array_push($invalidRows, $r);
@@ -177,13 +185,14 @@ class HomeController extends \BaseController
         }
 
         if (count($invalidRows) > 0) {
-            return View::make("home.invalidrows")->with('allItems',
+            return View::make("Home.invalidrows")->with('allItems',
                 array('validation' => 'Please specify "item_name" on the following:', 'invalidRows' => $invalidRows));
         }
     }
 
 
-    public function exportCategory() {
+    public function exportCategory()
+    {
         // Initialization
         error_reporting(E_ALL);
         ini_set('display_errors', TRUE);
@@ -200,7 +209,7 @@ class HomeController extends \BaseController
 
         // save kind IDs
         $kinds = [];
-        foreach($items as $item) {
+        foreach ($items as $item) {
             $kinds[$item->kind_id] = '';
         }
 
@@ -213,8 +222,8 @@ class HomeController extends \BaseController
         $matrix = [];
         $row = [];
         $columns = Schema::getColumnListing('items');
-        foreach($items as $item) {
-            foreach($columns as $col) {
+        foreach ($items as $item) {
+            foreach ($columns as $col) {
                 array_push($row, $item->$col);
             }
             array_push($matrix, $row);
@@ -310,10 +319,10 @@ class HomeController extends \BaseController
 
         // Miscellaneous glyphs, UTF-8
         $letter = 'A';
-        for($i = 0; $i < count($itemColumns); $i++) {
-            $cell = $letter.'1';
+        for ($i = 0; $i < count($itemColumns); $i++) {
+            $cell = $letter . '1';
 
-            $objPHPExcel->setActiveSheetIndex(0)->setCellValue($cell , $itemColumns[$i]);
+            $objPHPExcel->setActiveSheetIndex(0)->setCellValue($cell, $itemColumns[$i]);
             $objPHPExcel->setActiveSheetIndex(0)->getColumnDimension($letter)->setAutoSize(true);
             $letter++;
         }
@@ -385,11 +394,10 @@ class HomeController extends \BaseController
         } catch (Exception $e) {
             return 'validateHeader: ' . $e->getMessage();
         }
-        //return count($invalidHeaders);
 
         if (count($invalidHeaders) > 0 || $itemName == false) {
             //if any of the excel headers are invalid return view with list of invalid headers and list of possible correct options
-            return View::make("home.invalidheading")->with('allItems', array('invalidHeaders' => $invalidHeaders, 'validHeaders' => $itemColumns, 'itemName' => $itemName));
+            return View::make("Home.invalidheading")->with('allItems', array('invalidHeaders' => $invalidHeaders, 'validHeaders' => $itemColumns, 'itemName' => $itemName));
         }
 
         //return '<p>no invalid headers</p>';  //now it should iterate through all excel rows and list valid & invalid for confirmation
@@ -452,6 +460,7 @@ class HomeController extends \BaseController
                 array_push($badRows, 'Model failed - Row: ' . $row);
             }
 
+
             /*
              *   Insert Item to DB - save item!
              */
@@ -464,11 +473,8 @@ class HomeController extends \BaseController
         }
 //        echo count($badRows);
         if (count($badRows) > 0) {
-            return View::make("home.invalidrows")->with('allItems', array('invalidRows' => $badRows, 'validation' => 'Model validation failed: '));
+            return View::make("Home.invalidrows")->with('allItems', array('invalidRows' => $badRows, 'validation' => 'Model validation failed: '));
         }
-
-        return View::make("home.invalidrows")->with('allItems', array('invalidRows' => $badRows, 'validation' => 'Success'));
-
     }
 
     /*
@@ -519,5 +525,36 @@ class HomeController extends \BaseController
 
         return $itemColumns;
     }
+
+    public function import()
+    {
+        $selectionOfCategories = "<select id=\"categories\" name=\"categories\">";
+        $categories = DB::table('categories')->where('parent_id', '=', 1)->get();
+        foreach ($categories as $category1) {
+            $selectionOfCategories.= '<option value="' .$category1->name . '">' . $category1->name . '</option>';
+            $subcategories = DB::table('categories')->where('parent_id', '=', $category1->id)->get();
+            if (! empty($subcategories)){
+                foreach($subcategories as $subcategory){
+                    $selectionOfCategories.= '<option value="'  .$subcategory->name . '">' . $category1->name . '>' . $subcategory->name . '</option>';
+                    $thirdLevelCategories = DB::table('categories')->where('parent_id', '=', $subcategory->id)->get();
+                    if(! empty($thirdLevelCategories)){
+                        foreach ($thirdLevelCategories as $thirdLevelCategory){
+                            $selectionOfCategories.= '<option value="' . $thirdLevelCategory->name .  '">' . $category1->name . '>' . $subcategory->name . '>' . $thirdLevelCategory->name . '</option>';
+                            $fourthLevelCategories = DB::table('categories')->where('parent_id', '=', $thirdLevelCategory->id)->get();
+                            if(! empty($fourthLevelCategories)){
+                                foreach($fourthLevelCategories as $fourthLevelCategory){
+                                    $selectionOfCategories.= '<option value="' . $fourthLevelCategory->name .  '">' . $category1->name . '>' . $subcategory->name . '>' . $thirdLevelCategory->name . '>'  . $fourthLevelCategory->name . '</option>';
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        $selectionOfCategories.= '</select>';
+        return View::make('Home.import')->with('selectionOfCategories', $selectionOfCategories) ;
+    }
+
+
 
 }

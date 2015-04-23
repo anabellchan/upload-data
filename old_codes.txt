@@ -1,0 +1,200 @@
+/**
+ * Created by PhpStorm.
+ * User: Anabell
+ * Date: 2015-04-09
+ * Time: 5:08 PM
+ */
+
+     public function submit()
+     {
+         /*
+         // debug purposes
+         */
+         $category = Input::get('categories');
+
+         $filename = Input::file('file')->getClientOriginalName();
+         //$tempFilename = Input::file('file')->getFilename();
+         $inputFile = Input::file('file')->getRealPath();
+
+ //        var_dump(Input::file('file'));
+ //        echo "<p>Temporary filename: $tempFilename</p>";
+ //        echo "<p>Temporary path: $inputFile</p>";
+
+         echo "<h1>Filename: $filename</h1>";
+
+         // validate file
+         $fileExtension = strtolower(Input::file('file')->guessClientExtension());
+
+         if (!self::isOfValidFileExtension($fileExtension)) {
+             $message = "<b>$filename is invalid.  Only accepts the following file extensions: " . self::acceptedExtensions() . "</b>";
+             return View::make("home.error")->with('message', $message);
+         } else {
+             try {
+                 return $this->read($inputFile, $fileExtension, $category);
+             } catch (Exception $e) {
+                 return View::make("home.error")->with('message', 'submit: ' . $e->getMessage());
+             }
+         }
+     }
+public function read($inputFileName, $inputFileType) {
+    /** Include Excel Reader **/
+    set_include_path(get_include_path() . PATH_SEPARATOR . '../models/');
+    include 'C:\phpprojects\upload-data\app\models\PHPExcel\IOFactory.php';
+
+    try {
+        /** Load $inputFileName to a PHPExcel Object  **/
+        echo '<p>Loading file ',pathinfo($inputFileName,PATHINFO_BASENAME),' using IOFactory to identify the format</p>';
+//        $objReader = PHPExcel_IOFactory::createReader($inputFileType);
+//        $objReader->setReadDataOnly(true);
+        $objPHPExcel = PHPExcel_IOFactory::load($inputFileName);
+//        $objPHPExcel = PHPExcel_IOFactory::load($inputFileName);
+    } catch(PHPExcel_Reader_Exception $e) {
+        echo "<p>Error reading file.</p>";
+        die('Error loading file: '.$e->getMessage());
+    }
+    echo '<hr />';
+    echo "<p>Showing cell data</p>";
+    $v = $objPHPExcel->getActiveSheet()->getCell('B8')->getValue();
+
+    echo "<p>$v</p>";
+//        $sheetData = $objPHPExcel->getActiveSheet()->toArray(null,true,true,true);
+//        $objReader = PHPExcel_IOFactory::createReader('Excel2007');
+//
+//        echo $objPHPExcel->getActiveSheet()->getCell('F2')->getValue();
+
+//        var_dump($sheetData);
+
+}
+
+    public function read($inputFileName) {
+
+        if (!file_exists($inputFileName)) {
+            die("File does not exist.");
+        }
+
+        $objReader = PHPExcel_IOFactory::createReader('Excel2007');
+        $objPHPExcel = $objReader->load($inputFileName);
+        echo date('H:i:s') , " Iterate worksheets" , EOL;
+        foreach ($objPHPExcel->getWorksheetIterator() as $worksheet) {
+            echo 'Worksheet - ' , $worksheet->getTitle() , EOL;
+            foreach ($worksheet->getRowIterator() as $row) {
+                echo '    Row number - ' , $row->getRowIndex() , EOL;
+                $cellIterator = $row->getCellIterator();
+                $cellIterator->setIterateOnlyExistingCells(false); // Loop all cells, even if it is not set
+                foreach ($cellIterator as $cell) {
+                    if (!is_null($cell)) {
+                        echo '        Cell - ' , $cell->getCoordinate() , ' - ' , $cell->getCalculatedValue() , EOL;
+                    }
+                }
+            }
+        }
+        // Echo memory peak usage
+        echo date('H:i:s') , " Peak memory usage: " , (memory_get_peak_usage(true) / 1024 / 1024) , " MB" , EOL;
+    }
+
+
+    public function read_workingVer($inputFileName) {
+
+        echo '<table>' . "\n";
+        foreach ($objWorksheet->getRowIterator() as $row) {
+            echo '<tr>' . "\n";
+
+            $cellIterator = $row->getCellIterator();
+            $cellIterator->setIterateOnlyExistingCells(false); // This loops all cells,
+            // even if it is not set.
+            // By default, only cells
+            // that are set will be
+            // iterated.
+            foreach ($cellIterator as $cell) {
+                echo '<td>' . $cell->getValue() . '</td>' . "\n";
+            }
+
+            echo '</tr>' . "\n";
+        }
+        echo '</table>' . "\n";
+
+        dd($objPHPExcel->getActiveSheet()->getCel(0)->getValue());
+
+        dd($objWorksheet);
+        foreach ($objWorksheet->getRowIterator() as $row) {
+            $cellIterator = $row->getCellIterator();
+            dd($cellIterator);
+            //return $row;
+        }
+
+        return $objWorksheet->getRowIterator();
+        $headers = $objWorksheet->getRowIterator()[0];
+        validateHeader($headers);
+    }
+
+    public function exportCategoryCSV() {
+        $objPHPExcel = new PHPExcel();
+        // Set document properties
+
+        // Set document properties
+        $objPHPExcel->getProperties()->setCreator("")
+            ->setLastModifiedBy("")
+            ->setTitle("Triumf Inventory")
+            ->setSubject("Triumf Inventory")
+            ->setDescription("Triumf Inventory Spreadsheet.")
+            ->setKeywords("csv")
+            ->setCategory("Triumf Inventory");
+
+        $objPHPExcel->setActiveSheetIndex(0);
+
+        // Get items by category
+        $category = Input::get('categories');
+        $categoryID = DB::table('categories')->where('name', $category)->first()->id;
+        $items = DB::table('items')->where('category_id', $categoryID)->get();
+
+        // save kind IDs
+        $kinds = [];
+        foreach($items as $item) {
+            $kinds[$item->kind_id] = '';
+        }
+
+        // save kind names
+        foreach ($kinds as $key => $value) {
+            $kinds[$key] = DB::table('kinds')->where('id', $key)->first()->name;
+        }
+
+        // convert objects to array
+        $matrix = [];
+        $row = [];
+        $columns = Schema::getColumnListing('items');
+        foreach($items as $item) {
+            foreach($columns as $col) {
+                if ($col=='kind_id') {
+                    $index =$item->$col;
+                    $item->$col = $kinds[$index];
+                }
+                array_push($row, $item->$col);
+            }
+            array_push($matrix, $row);
+            $row = [];
+        }
+        /* code to insert data into excel file */
+        $worksheet = $objPHPExcel->setActiveSheetIndex(0);
+        // convert data to array that ExcelReader can use
+        $arrColumns = [];
+        array_push($arrColumns, $columns);
+        $pos = array_search('kind_id', $arrColumns[0]);
+        $arrColumns[0][$pos] = 'item_name';
+
+        $worksheet->fromArray($arrColumns, NULL, 'A1');
+        $worksheet->fromArray($matrix, NULL, 'A2');
+
+    //    $objWriter = new PHPExcel_Writer_CSV($objPHPExcel);
+    //    $objWriter->setExcelCompatibility(true);
+    ////    $path = getcwd() . "\\app\\";
+    ////    dd($path);
+    //    $objWriter->save("anabell.csv");
+    //    $objWriter->save('php://output');
+
+        $objWriter = PHPExcel_IOFactory::createWriter($objPHPExcel, 'CSV')->setDelimiter(',')
+            ->setEnclosure('"')
+            ->setLineEnding("\r\n")
+            ->setSheetIndex(0)
+            ->save(str_replace('.php', '.csv', __FILE__));
+
+    }

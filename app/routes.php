@@ -23,10 +23,7 @@ Route::get('/', function() {
 //Route::resource('upload', 'HomeController');
 Route::any('import/file', 'HomeController@submit');
 
-Route::get('import', function(){
-    $categories = DB::table('categories')->orderBy('name')->lists('name');
-    return View::make('Home.import')->with('categories', $categories);
-});
+Route::get('import', 'HomeController@import');
 
 Route::get('export', function() {
     $categories = DB::table('categories')->orderBy('name')->lists('name');

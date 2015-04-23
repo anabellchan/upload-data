@@ -17,13 +17,15 @@
         {{ Form::open(['url'=>'import/file','files'=>true]) }}
         {{ Form::label('categories','Select Category for Uploaded Items',['id'=>'','class'=>'']) }}
         <!--{{ Form::select('categories', array('L' => 'Large', 'S' => 'Small')) }}-->
-        <select id="categories" name="categories">
-            @forelse($categories as $cat)
-                <option value="{{$cat}}">{{$cat}}</option>
-            @empty
-                <option value="none">ERROR!</option>
-            @endforelse
-        </select>
+        {{--<select id="categories" name="categories">--}}
+            {{--<option value=""> </option>--}}
+            {{--@forelse($categories as $cat)--}}
+                {{--<option value="{{$cat}}">{{$cat}}</option>--}}
+            {{--@empty--}}
+                {{--<option value="none">ERROR!</option>--}}
+            {{--@endforelse--}}
+        {{--</select>--}}
+        {{$selectionOfCategories}}
 
         <br/>
         <br/>
@@ -34,7 +36,7 @@
         <br/>
 
         <!-- buttons -->
-        {{ Form::submit('Save') }}
+        {{ Form::submit('Import') }}
         {{ Form::reset('Reset') }}
 
         {{ Form::close() }}

@@ -3,6 +3,7 @@
 
 </head>
 <body>
-{{$message}}
+{{$m}}
+
 </body>
 </html>
