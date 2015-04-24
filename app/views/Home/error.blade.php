@@ -1,8 +1,12 @@
-<html>
-<head>
+@extends('layouts.basic')
 
-</head>
-<body>
+@section('headers')
+    <style>
+
+    </style>
+@stop
+
+
+@section('maincontent')
 {{$message}}
-</body>
-</html>
+@stop

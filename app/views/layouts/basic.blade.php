@@ -42,10 +42,6 @@
 	</style>
 </head>
 <body>
-
-
 	@yield('maincontent')
-
-
 </body>
 </html>

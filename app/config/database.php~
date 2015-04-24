@@ -52,20 +52,16 @@ return array(
 			'prefix'   => '',
 		),
 
-        'mysql' => array(
-            'driver'    => 'mysql',
-#			'host'      => 'brown.mysitehosted.com',
-#			'database'  => 'triumf',
-#			'username'  => 'testuser',
-#			'password'  => 'testpassword',
-            'host'      => 'localhost',
-            'database'  => 'daqinv',
-            'username'  => 'daqinv',
-            'password'  => '123',
-            'charset'   => 'utf8',
-            'collation' => 'utf8_unicode_ci',
-            'prefix'    => '',
-        ),
+		'mysql' => array(
+			'driver'    => 'mysql',
+			'host'      => 'brown.mysitehosted.com',
+			'database'  => 'triumf',
+			'username'  => 'testuser',
+			'password'  => 'testpassword',
+			'charset'   => 'utf8',
+			'collation' => 'utf8_unicode_ci',
+			'prefix'    => '',
+		),
 
 		'pgsql' => array(
 			'driver'   => 'pgsql',

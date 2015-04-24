@@ -53,6 +53,9 @@
                 </div>
             </div>
         @endif
-
+        <div>
+            <br>
+            <a href="{{ URL::previous() }}">Back</a>
+        </div>
     </div>
 @stop

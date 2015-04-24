@@ -8,8 +8,13 @@
 
 
 @section('maincontent')
+<div><a href='https://daq03.triumf.ca/daqinv/frontend/'>Return to LADD/DAQ Inventory System</a></div>
 	<div>
-        <h1>Upload Data</h1>
+	<br>
+        <h1>Import/Export Data Application</h1>
+		{{ HTML::image('upload.png', 'Upload an Excel spreadsheet to database.') }}
+        <br/>
+        <br/>
     </div>
     <div>
         <br>
@@ -23,18 +28,6 @@
         <br>
         <a href="{{ URL::to('template') }}">Download Inventory Spreadsheet Template</a>
     </div>
-	
-	
-	
-	<div>
-	<br>
-	token test - url token is {{$alltokens['urltoken']}}
-	@forelse($alltokens['tokens'] as $t)
-		<li>{{$t}}</li>
-	@empty
-		<li>no tokens found</li>
-	@endforelse
-		</div>
 	
 	
 @stop

@@ -8,18 +8,17 @@
 
 
 @section('maincontent')
+<div><a href='https://daq03.triumf.ca/daqinv/frontend/'>Return to LADD/DAQ Inventory System</a></div>
 	<div>
+	<br>
         <h1>Export Data</h1>
+		{{ HTML::image('upload.png', 'Upload an Excel spreadsheet to database.') }}
         <br/>
         <br/>
         {{ Form::open(['url'=>'export/category']) }}
         {{ Form::label('categories','Select Category for Uploaded Items',['id'=>'','class'=>'']) }}
         <select id="categories" name="categories">
-            @forelse($categories as $cat)
-                <option value="{{$cat}}">{{$cat}}</option>
-            @empty
-                <option value="none">ERROR!</option>
-            @endforelse
+            {{$categories}}
         </select>
         <!-- buttons -->
         {{ Form::submit('Export') }}
@@ -28,7 +27,8 @@
 	</div>
     <div>
         <br>
-        <a href="{{ URL::to('/') }}">Back</a>
+		<br>
+        <a href="{{ URL::to('/') }}">Return to Import/Export Home</a>
     </div>
 
 @stop
